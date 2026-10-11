@@ -8,7 +8,9 @@ decisions already taken and the problems the first build ran into.
 A Cloudflare Worker that turns a LINE Official Account into "Scent Concierge" for BitterSweet, a
 Thai niche perfume brand (a BIS608/BIS609 university project, KMUTT). LINE posts each message to
 `POST /webhook`; the Worker verifies the signature, loads recent history and consent from D1, asks
-Claude (`claude-sonnet-5-5`, structured JSON output), replies through the LINE reply API, and — only
+the AI model for a structured JSON answer (by default a local Qwen model in Ollama on the owner's Mac
+mini, reached through a Cloudflare Tunnel, see `docs/LOCAL-LLM.md`; or Claude `claude-sonnet-5-5` with
+`LLM_PROVIDER = "anthropic"`), replies through the LINE reply API, and — only
 with PDPA consent — appends a profile row to a Google Sheet through an Apps Script web app. The
 goal is a demo where students scan a QR code and chat with the bot.
 
@@ -51,6 +53,7 @@ wrong; do not weaken or delete a test to make it pass.
 | `src/index.ts` | HTTP entry (`/webhook` only, size cap, signature) and the daily `scheduled()` cleanup |
 | `src/handler.ts` | Per-event flow: dedupe, limits, history, Claude, reply, consent, CRM; subrequest budget comment |
 | `src/claude.ts` | Messages API call via `fetch`, prompt caching, JSON schema, response guard |
+| `src/llm.ts` | Local model via Ollama `/api/chat` (`think: false`, `format` = same schema, Access headers) |
 | `src/store.ts` | D1 queries: events, counters, history, consent, cleanup |
 | `src/crm.ts` | Builds the Sheet row and posts it (consent rules live here) |
 | `src/line.ts`, `src/signature.ts`, `src/webhook.ts` | LINE API calls, HMAC check, webhook body guards |
@@ -78,6 +81,10 @@ wrong; do not weaken or delete a test to make it pass.
 
 ## Known traps
 
+- Local model: the Worker has about 30 s per message, so `LLM_TIMEOUT_MS` is capped at 25 s in code.
+  Check speed on the Mac with `npm run bench:local` after changing the model. Thinking must stay off.
+- Ollama rejects requests whose Host header is not local; the tunnel's public hostname needs
+  HTTP Host Header `localhost:11434`.
 - `thinking: {type: "between_tools"}` and `fallbacks: "default"` (with the
   `server-side-fallback-2026-07-01` beta header) are accepted only by `claude-sonnet-5-5`. Changing
   `CLAUDE_MODEL` without making those model-dependent breaks every reply. Check the current Claude
