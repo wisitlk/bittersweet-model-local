@@ -1,0 +1,98 @@
+import { CONSENT_NOTE, isConciergeResponse, RESPONSE_SCHEMA, type ChatMessage, type ConciergeResponse } from "./claude";
+import { errName, isRecord } from "./guards";
+
+/*
+ * Local model (Qwen on the owner's Mac mini) through Ollama's native chat API, reached from the Worker over a
+ * Cloudflare Tunnel. Ollama is used directly rather than its OpenAI-style endpoint because `think: false` and
+ * `format: <json schema>` are documented there and both are required: thinking makes replies far too slow, and
+ * the schema forces the same JSON shape Claude returns.
+ */
+
+export const DEFAULT_LOCAL_MODEL = "qwen3.8:27b";
+// waitUntil keeps the Worker alive about 30 s; the LINE reply and CRM post still need a few seconds after this.
+export const DEFAULT_LOCAL_TIMEOUT_MS = 24_000;
+const MAX_LOCAL_TIMEOUT_MS = 25_000;
+
+export interface LocalConfig {
+  baseUrl: string;
+  model: string;
+  timeoutMs: number;
+  // Cloudflare Access service token in front of the tunnel; both empty only when testing without Access.
+  accessClientId?: string;
+  accessClientSecret?: string;
+}
+
+export function buildLocalRequestBody(
+  model: string,
+  system: string,
+  history: ChatMessage[],
+  userText: string,
+  consentGiven = false,
+) {
+  return {
+    model,
+    // The system prompt comes first and stays byte-identical, so Ollama can reuse its cached prefix.
+    messages: [
+      { role: "system", content: system },
+      ...history,
+      { role: "user", content: userText },
+      ...(consentGiven ? [{ role: "system", content: CONSENT_NOTE }] : []),
+    ],
+    stream: false,
+    think: false,
+    format: RESPONSE_SCHEMA,
+    // Keep the model loaded between students so nobody waits for it to load from disk.
+    keep_alive: -1,
+    options: { temperature: 0.3, num_predict: 800, num_ctx: 8192 },
+  };
+}
+
+export function clampTimeout(value: string | undefined): number {
+  const n = Number(value);
+  if (value === undefined || !Number.isFinite(n) || n <= 0) return DEFAULT_LOCAL_TIMEOUT_MS;
+  return Math.min(n, MAX_LOCAL_TIMEOUT_MS);
+}
+
+/** Calls Ollama's /api/chat. Returns null on any failure (HTTP error, truncation, timeout, bad JSON or shape). */
+export async function askLocal(
+  cfg: LocalConfig,
+  system: string,
+  history: ChatMessage[],
+  userText: string,
+  consentGiven = false,
+): Promise<ConciergeResponse | null> {
+  try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (cfg.accessClientId && cfg.accessClientSecret) {
+      headers["CF-Access-Client-Id"] = cfg.accessClientId;
+      headers["CF-Access-Client-Secret"] = cfg.accessClientSecret;
+    }
+    const res = await fetch(`${cfg.baseUrl.replace(/\/+$/, "")}/api/chat`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(buildLocalRequestBody(cfg.model, system, history, userText, consentGiven)),
+      signal: AbortSignal.timeout(cfg.timeoutMs),
+    });
+    if (!res.ok) {
+      console.error("local_http_error", res.status);
+      return null;
+    }
+    const data: unknown = await res.json();
+    if (!isRecord(data)) return null;
+    if (data.done_reason !== "stop") {
+      console.error("local_bad_done_reason", String(data.done_reason));
+      return null;
+    }
+    const msg = data.message;
+    if (!isRecord(msg) || typeof msg.content !== "string") return null;
+    const parsed: unknown = JSON.parse(msg.content);
+    if (!isConciergeResponse(parsed)) {
+      console.error("local_schema_mismatch");
+      return null;
+    }
+    return parsed;
+  } catch (err) {
+    console.error("local_error", errName(err));
+    return null;
+  }
+}

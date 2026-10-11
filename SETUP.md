@@ -65,6 +65,8 @@ npx wrangler d1 execute bittersweet-concierge --remote --file=schema.sql
 
 ## 5. Get an Anthropic (Claude) API key (10 min)
 
+> **Using the local Qwen model on a Mac mini instead (the default in `wrangler.toml`)?** Skip this step and follow [docs/LOCAL-LLM.md](docs/LOCAL-LLM.md), then come back for step 6. In step 7, store `LLM_ACCESS_CLIENT_ID` and `LLM_ACCESS_CLIENT_SECRET` instead of `ANTHROPIC_API_KEY`.
+
 1. Go to https://console.anthropic.com, sign in, and add a small amount of credit (a few dollars is plenty for a demo).
 2. Create a **separate workspace** just for this bot (Console settings → Workspaces → add workspace, e.g. "BitterSweet demo"). Open that workspace's limits and set a **monthly spend limit**, for example $10. If the key ever leaks, or the bot is spammed, the damage stops at that amount.
 3. Create the API key **inside that workspace** (not in the default workspace) and copy it into your private note.
@@ -96,7 +98,9 @@ Run each command **exactly as written, without typing the secret in the command*
 ```
 npx wrangler secret put LINE_CHANNEL_SECRET
 npx wrangler secret put LINE_CHANNEL_ACCESS_TOKEN
-npx wrangler secret put ANTHROPIC_API_KEY
+npx wrangler secret put ANTHROPIC_API_KEY        # only if LLM_PROVIDER = "anthropic"
+npx wrangler secret put LLM_ACCESS_CLIENT_ID     # only if LLM_PROVIDER = "local" (docs/LOCAL-LLM.md)
+npx wrangler secret put LLM_ACCESS_CLIENT_SECRET # only if LLM_PROVIDER = "local"
 npx wrangler secret put SHEETS_WEBHOOK_URL
 npx wrangler secret put SHEETS_TOKEN
 ```

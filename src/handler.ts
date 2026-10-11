@@ -1,4 +1,5 @@
-import { askClaude, DEFAULT_MODEL, type ConciergeResponse } from "./claude";
+import { askClaude, DEFAULT_MODEL, type ChatMessage, type ConciergeResponse } from "./claude";
+import { askLocal, clampTimeout, DEFAULT_LOCAL_MODEL } from "./llm";
 import { buildCrmRow, sendCrmRow, WAIT_UNTIL_BUDGET_MS } from "./crm";
 import { replyText, startLoading } from "./line";
 import { APOLOGY_REPLY, BUSY_REPLY, DAILY_CAP_REPLY, NON_TEXT_REPLY, RATE_LIMITED_REPLY } from "./messages";
@@ -34,7 +35,7 @@ export const MAX_USER_TEXT_CHARS = 1000;
  *   D1: claim 1 + per-user window 1 + per-user day 1 + global day 1 + history 1 + consent read 1
  *       + save turn 1 (one two-row INSERT) + consent upsert 1 = 8
  *       (a delete request replaces the save and upsert with 2 deletes, history and consent: also 8)
- *   fetch: loading 1 + Claude 1 + LINE reply 1 + Apps Script 2 (one redirect hop) = 5
+ *   fetch: loading 1 + AI model 1 (Claude or local Qwen) + LINE reply 1 + Apps Script 2 (one redirect hop) = 5
  *       (a delete row is posted twice if the first try fails: +2, but then there is one D1 write less)
  *   one apology reply after a failure = 1
  *   total 16
@@ -43,8 +44,9 @@ export const MAX_USER_TEXT_CHARS = 1000;
  * Events beyond those caps are dropped. LINE normally sends one event per webhook, so this only matters in bursts.
  *
  * Time: ctx.waitUntil() keeps the Worker alive up to 30 s after the response is sent. Claude times out at 20 s,
- * LINE calls at 3 s, the Apps Script call at 5 s; the reply, history write and CRM post run in parallel after
- * Claude, so the usual worst case is about 20 + 5 s plus a few database round trips.
+ * the local model at LLM_TIMEOUT_MS (default 24 s, capped at 25 s), LINE calls at 3 s, the Apps Script call at 5 s;
+ * the reply, history write and CRM post run in parallel after the model, so the usual worst case is about
+ * 24 + 5 s plus a few database round trips.
  */
 export const FULL_PATH_COST = 16;
 export const MAX_FULL_EVENTS = 2;
@@ -84,6 +86,36 @@ async function safeReply(token: string, replyToken: string, text: string, what: 
   } catch (err) {
     console.error("reply_failed", what, errName(err));
   }
+}
+
+/** One AI call per message: the local Qwen model when LLM_PROVIDER is "local", otherwise Claude. */
+function askModel(
+  env: Env,
+  system: string,
+  history: ChatMessage[],
+  userText: string,
+  consentGiven: boolean,
+): Promise<ConciergeResponse | null> {
+  if (env.LLM_PROVIDER === "local") {
+    if (!env.LLM_BASE_URL) {
+      console.error("local_not_configured");
+      return Promise.resolve(null);
+    }
+    return askLocal(
+      {
+        baseUrl: env.LLM_BASE_URL,
+        model: env.LLM_MODEL || DEFAULT_LOCAL_MODEL,
+        timeoutMs: clampTimeout(env.LLM_TIMEOUT_MS),
+        accessClientId: env.LLM_ACCESS_CLIENT_ID,
+        accessClientSecret: env.LLM_ACCESS_CLIENT_SECRET,
+      },
+      system,
+      history,
+      userText,
+      consentGiven,
+    );
+  }
+  return askClaude(env.ANTHROPIC_API_KEY ?? "", env.CLAUDE_MODEL || DEFAULT_MODEL, system, history, userText, consentGiven);
 }
 
 export async function handleEvent(
@@ -127,14 +159,7 @@ export async function handleEvent(
     // The typing animation is cosmetic: start it, but do not make the Claude call wait for it.
     const loading = startLoading(token, ev.userId);
     const [history, consentStored] = await Promise.all([loadHistory(env.DB, ev.userId), hasConsent(env.DB, ev.userId)]);
-    const resp: ConciergeResponse | null = await askClaude(
-      env.ANTHROPIC_API_KEY,
-      env.CLAUDE_MODEL || DEFAULT_MODEL,
-      content.systemPrompt,
-      history,
-      userText,
-      consentStored,
-    );
+    const resp = await askModel(env, content.systemPrompt, history, userText, consentStored);
     await loading; // never rejects
     if (!resp) return await say(APOLOGY_REPLY);
 

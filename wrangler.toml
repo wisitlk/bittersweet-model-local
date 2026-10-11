@@ -20,6 +20,12 @@ database_id = "REPLACE_WITH_D1_DATABASE_ID"
 crons = ["17 3 * * *"]
 
 [vars]
+# AI model. "local" = Qwen in Ollama on the Mac mini, reached through a Cloudflare Tunnel (docs/LOCAL-LLM.md).
+LLM_PROVIDER = "local"
+LLM_BASE_URL = "REPLACE_WITH_TUNNEL_URL"   # e.g. https://llm.your-domain.com (no trailing /api)
+LLM_MODEL = "qwen3.8:27b"                  # the exact tag shown by `ollama list` on the Mac
+LLM_TIMEOUT_MS = "24000"                   # capped at 25000 in code: the Worker has about 30 s per message
+# Only used when LLM_PROVIDER is "anthropic".
 CLAUDE_MODEL = "claude-sonnet-5-5"
 USER_MSG_LIMIT = "20"          # messages per user ...
 USER_WINDOW_SECONDS = "600"    # ... per this many seconds
@@ -27,4 +33,6 @@ USER_DAILY_LIMIT = "60"        # messages per user per UTC day
 DAILY_CLAUDE_CAP = "1500"      # max Claude calls per UTC day, all users together
 
 # Secrets (set with `npx wrangler secret put <NAME>`, never written here):
-#   LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN, ANTHROPIC_API_KEY, SHEETS_WEBHOOK_URL, SHEETS_TOKEN
+#   LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN, SHEETS_WEBHOOK_URL, SHEETS_TOKEN,
+#   LLM_ACCESS_CLIENT_ID, LLM_ACCESS_CLIENT_SECRET (Cloudflare Access service token for the tunnel)
+#   ANTHROPIC_API_KEY only if LLM_PROVIDER is "anthropic"
