@@ -1,0 +1,20 @@
+{
+  "destination": "Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "events": [
+    {
+      "type": "message",
+      "message": {
+        "type": "text",
+        "id": "468789577898262530",
+        "quoteToken": "test-quote-token",
+        "text": "สวัสดีครับ เมื่อวานไปดมที่บูธ ชอบ Cilantro แต่กลัวมันเขียวเกินไปถ้าใส่ไปทำงานทุกวัน"
+      },
+      "webhookEventId": "01TEST00000000000000000000",
+      "deliveryContext": { "isRedelivery": false },
+      "timestamp": 1791468591786,
+      "source": { "type": "user", "userId": "U_TEST_DEMO_USER_0001" },
+      "replyToken": "00000000000000000000000000000000",
+      "mode": "active"
+    }
+  ]
+}

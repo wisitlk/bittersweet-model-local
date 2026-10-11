@@ -1,0 +1,30 @@
+name = "bittersweet-line-concierge"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+# Load the content files as plain text strings (imported in src/index.ts).
+[[rules]]
+type = "Text"
+globs = ["**/*.md", "**/*.txt"]
+fallthrough = true
+
+# D1 database (see SETUP.md, step "Create the database").
+# Run `npx wrangler d1 create bittersweet-concierge`, then paste the database_id it prints below.
+[[d1_databases]]
+binding = "DB"
+database_name = "bittersweet-concierge"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+# Daily cleanup of data older than 7 days (03:17 UTC), see scheduled() in src/index.ts.
+[triggers]
+crons = ["17 3 * * *"]
+
+[vars]
+CLAUDE_MODEL = "claude-sonnet-5-5"
+USER_MSG_LIMIT = "20"          # messages per user ...
+USER_WINDOW_SECONDS = "600"    # ... per this many seconds
+USER_DAILY_LIMIT = "60"        # messages per user per UTC day
+DAILY_CLAUDE_CAP = "1500"      # max Claude calls per UTC day, all users together
+
+# Secrets (set with `npx wrangler secret put <NAME>`, never written here):
+#   LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN, ANTHROPIC_API_KEY, SHEETS_WEBHOOK_URL, SHEETS_TOKEN
