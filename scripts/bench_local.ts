@@ -1,0 +1,66 @@
+/*
+ * Times the AI model with the real system prompt, to check it answers inside the Worker's budget.
+ *   Local Qwen (Ollama running on this Mac):  npm run bench:local
+ *     optional LLM_BASE_URL (default http://localhost:11434), LLM_MODEL (default qwen3.8:27b)
+ *   Gemini: first `read -s GEMINI_API_KEY && export GEMINI_API_KEY` (paste the key at the hidden prompt),
+ *     then npm run bench:gemini; optional GEMINI_MODEL, GEMINI_THINKING_LEVEL
+ * Prints only timings and the bot's replies; nothing is sent to LINE or the Sheet.
+ */
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { buildSystemPrompt } from "../src/claude";
+import { askGemini, DEFAULT_GEMINI_MODEL, DEFAULT_GEMINI_THINKING, GEMINI_TIMEOUT_MS } from "../src/gemini";
+import { askLocal, DEFAULT_LOCAL_MODEL, DEFAULT_LOCAL_TIMEOUT_MS } from "../src/llm";
+
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const system = buildSystemPrompt(
+  readFileSync(join(root, "content/system_prompt.md"), "utf8"),
+  readFileSync(join(root, "content/knowledge.md"), "utf8"),
+);
+
+const samples = [
+  "สวัสดีครับ แนะนำน้ำหอมให้หน่อย",
+  "ชอบกลิ่นสดชื่นแบบใบไม้ ควรลองกลิ่นไหนดี",
+  "Discovery set ราคาเท่าไหร่ครับ",
+  "อยากซื้อขวดใหญ่ 1 ขวดครับ",
+  "ผิวแพ้ง่าย ใช้ได้ไหมคะ",
+];
+
+const useGemini = process.argv.includes("--gemini");
+const geminiKey = process.env.GEMINI_API_KEY ?? "";
+if (useGemini && !geminiKey) {
+  console.error("GEMINI_API_KEY is not set: run `read -s GEMINI_API_KEY && export GEMINI_API_KEY` first.");
+  process.exit(1);
+}
+const geminiModel = process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL;
+const thinking = process.env.GEMINI_THINKING_LEVEL || DEFAULT_GEMINI_THINKING;
+const cfg = {
+  baseUrl: process.env.LLM_BASE_URL || "http://localhost:11434",
+  model: process.env.LLM_MODEL || DEFAULT_LOCAL_MODEL,
+  timeoutMs: 120_000, // measure the real time here; the Worker itself stops at LLM_TIMEOUT_MS
+};
+// Gemini aborts at its own 20 s timeout inside askGemini, which is also what the Worker uses.
+const budgetMs = useGemini ? GEMINI_TIMEOUT_MS : DEFAULT_LOCAL_TIMEOUT_MS;
+const ask = (text: string) =>
+  useGemini ? askGemini(geminiKey, geminiModel, system, [], text, false, thinking) : askLocal(cfg, system, [], text);
+
+console.log(
+  useGemini
+    ? `Gemini ${geminiModel} (thinking ${thinking}); Worker budget ${budgetMs / 1000} s per reply\n`
+    : `model ${cfg.model} at ${cfg.baseUrl}; Worker budget ${budgetMs / 1000} s per reply\n`,
+);
+let worst = 0;
+for (const text of samples) {
+  const t0 = performance.now();
+  const resp = await ask(text);
+  const secs = (performance.now() - t0) / 1000;
+  worst = Math.max(worst, secs);
+  const verdict = !resp ? "FAILED (no valid JSON)" : secs * 1000 > budgetMs ? "TOO SLOW" : "ok";
+  console.log(`${secs.toFixed(1)} s  ${verdict}  > ${text}`);
+  if (resp) {
+    console.log(`        reply: ${resp.reply}`);
+    console.log(`        handoff=${resp.handoff} waitlist=${resp.crm.preorder_waitlist} segment=${resp.crm.segment || "-"}\n`);
+  }
+}
+console.log(`slowest: ${worst.toFixed(1)} s (the first call can be slower while the model loads; run it twice)`);

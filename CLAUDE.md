@@ -8,7 +8,9 @@ decisions already taken and the problems the first build ran into.
 A Cloudflare Worker that turns a LINE Official Account into "Scent Concierge" for BitterSweet, a
 Thai niche perfume brand (a BIS608/BIS609 university project, KMUTT). LINE posts each message to
 `POST /webhook`; the Worker verifies the signature, loads recent history and consent from D1, asks
-Claude (`claude-sonnet-5-5`, structured JSON output), replies through the LINE reply API, and — only
+the AI model for a structured JSON answer (`LLM_PROVIDER`: `gemini` by default, see `docs/GEMINI.md`;
+`local` = Qwen in Ollama on the owner's Mac mini through a Cloudflare Tunnel, see `docs/LOCAL-LLM.md`;
+`anthropic` = Claude `claude-sonnet-5-5`), replies through the LINE reply API, and — only
 with PDPA consent — appends a profile row to a Google Sheet through an Apps Script web app. The
 goal is a demo where students scan a QR code and chat with the bot.
 
@@ -20,7 +22,7 @@ rebuilding it on their own accounts (LINE, Cloudflare, Google, Anthropic) from `
 - Guide one step at a time; say what to click and what to expect, and ask for a screenshot when a
   console looks different. Console UIs change — trust what they show you over the text here.
 - Explain any technical term in plain words the first time.
-- **Never ask for a secret in the chat** (LINE channel secret or access token, Anthropic key,
+- **Never ask for a secret in the chat** (LINE channel secret or access token, Anthropic or Gemini key,
   Sheet token, Cloudflare token). Secrets go in only at hidden prompts: `npx wrangler secret put
   <NAME>`, Apps Script → Project Settings → Script properties, and for the Cloudflare token
   `$env:CLOUDFLARE_API_TOKEN = Read-Host "Paste Cloudflare token"`. If one is pasted into the
@@ -51,6 +53,8 @@ wrong; do not weaken or delete a test to make it pass.
 | `src/index.ts` | HTTP entry (`/webhook` only, size cap, signature) and the daily `scheduled()` cleanup |
 | `src/handler.ts` | Per-event flow: dedupe, limits, history, Claude, reply, consent, CRM; subrequest budget comment |
 | `src/claude.ts` | Messages API call via `fetch`, prompt caching, JSON schema, response guard |
+| `src/gemini.ts` | Gemini `generateContent` (`responseJsonSchema` = same schema, `thinkingLevel`) |
+| `src/llm.ts` | Local model via Ollama `/api/chat` (`think: false`, `format` = same schema, Access headers) |
 | `src/store.ts` | D1 queries: events, counters, history, consent, cleanup |
 | `src/crm.ts` | Builds the Sheet row and posts it (consent rules live here) |
 | `src/line.ts`, `src/signature.ts`, `src/webhook.ts` | LINE API calls, HMAC check, webhook body guards |
@@ -78,6 +82,13 @@ wrong; do not weaken or delete a test to make it pass.
 
 ## Known traps
 
+- Gemini 3.x/4 cannot turn thinking off (`thinkingLevel` low is the floor on some models, `minimal` on
+  others); `maxOutputTokens` includes thinking tokens, so keep it generous. `thinkingBudget` is the
+  older 2.5-series field and must not be sent together with `thinkingLevel`.
+- Local model: the Worker has about 30 s per message, so `LLM_TIMEOUT_MS` is capped at 25 s in code.
+  Check speed on the Mac with `npm run bench:local` after changing the model. Thinking must stay off.
+- Ollama rejects requests whose Host header is not local; the tunnel's public hostname needs
+  HTTP Host Header `localhost:11434`.
 - `thinking: {type: "between_tools"}` and `fallbacks: "default"` (with the
   `server-side-fallback-2026-07-01` beta header) are accepted only by `claude-sonnet-5-5`. Changing
   `CLAUDE_MODEL` without making those model-dependent breaks every reply. Check the current Claude
