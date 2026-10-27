@@ -31,3 +31,22 @@ CREATE TABLE IF NOT EXISTS consents (
   given       INTEGER NOT NULL,
   updated_at  INTEGER NOT NULL
 );
+
+-- Loyalty points from the LINE web app (LIFF). One row per reason per user, so an award can never be counted twice.
+-- Kept past the 7-day cleanup (it is the points record); deleted when the user asks to delete their data.
+CREATE TABLE IF NOT EXISTS points (
+  user_id     TEXT NOT NULL,
+  reason      TEXT NOT NULL,
+  points      INTEGER NOT NULL,
+  created_at  INTEGER NOT NULL,
+  PRIMARY KEY (user_id, reason)
+);
+
+-- Pre-order waitlist joined from the web app, always with PDPA consent (no orders, no payments, no addresses).
+-- Kept until sales open; deleted when the user asks to delete their data.
+CREATE TABLE IF NOT EXISTS waitlist (
+  user_id     TEXT NOT NULL,
+  product     TEXT NOT NULL,
+  created_at  INTEGER NOT NULL,
+  PRIMARY KEY (user_id, product)
+);

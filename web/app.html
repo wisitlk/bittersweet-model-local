@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BitterSweet</title>
+<style>
+  :root {
+    --bg: #f6f2ea; --card: #fffdf8; --ink: #2c2a25; --muted: #6f6a5f; --line: #e3dccd;
+    --accent: #4f7a43; --accent-ink: #ffffff; --warn-bg: #fff4d6; --warn-ink: #6b5200;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1b1a17; --card: #25241f; --ink: #eee8dc; --muted: #a9a294; --line: #3a372f;
+      --accent: #8fbf7f; --accent-ink: #14200f; --warn-bg: #3a3218; --warn-ink: #f2dc96;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.55 "Sukhumvit Set", "Noto Sans Thai", system-ui, sans-serif; }
+  header { padding: 20px 16px 8px; }
+  .hero { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 16px; margin-top: 12px; }
+  h1 { margin: 0; font-size: 22px; letter-spacing: .5px; }
+  .tag { color: var(--muted); font-size: 14px; margin: 2px 0 0; }
+  nav { display: flex; gap: 8px; padding: 8px 16px; position: sticky; top: 0; background: var(--bg); z-index: 2; }
+  nav button { flex: 1; padding: 10px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--card); color: var(--ink); font: inherit; }
+  nav button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  main { padding: 8px 16px 32px; max-width: 560px; margin: 0 auto; }
+  .notice { background: var(--warn-bg); color: var(--warn-ink); border-radius: 12px; padding: 12px 14px; font-size: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; margin-top: 14px; overflow: hidden; }
+  .product { display: flex; }
+  .photo { flex: 0 0 36%; min-height: 190px; background-size: cover; background-position: center 88%; }
+  .body { padding: 12px 14px 14px; }
+  .row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .price { font-weight: 600; }
+  .muted { color: var(--muted); font-size: 14px; }
+  .btn { display: block; width: 100%; margin-top: 12px; padding: 12px; border: 0; border-radius: 12px;
+    background: var(--accent); color: var(--accent-ink); font: inherit; font-weight: 600; }
+  .btn.ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  .btn:disabled { opacity: .6; }
+  .total { font-size: 44px; font-weight: 700; margin: 4px 0 0; }
+  ul.plain { list-style: none; padding: 0; margin: 0; }
+  ul.plain li { display: flex; justify-content: space-between; gap: 8px; padding: 10px 0; border-top: 1px solid var(--line); }
+  ul.plain li:first-child { border-top: 0; }
+  .done { color: var(--accent); font-weight: 600; }
+  .hidden { display: none !important; }
+  dialog { border: 0; border-radius: 16px; padding: 18px; max-width: 420px; width: calc(100% - 32px);
+    background: var(--card); color: var(--ink); }
+  dialog::backdrop { background: rgba(0,0,0,.45); }
+  label.consent { display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; font-size: 14px; }
+  label.consent input { width: 20px; height: 20px; margin-top: 2px; flex: none; }
+  #status { text-align: center; padding: 40px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>BitterSweet</h1>
+  <p class="tag">You wear it for you first. · <span id="hello"></span></p>
+  <img class="hero" src="/img/booth.jpg" alt="บูธ BitterSweet กับน้ำหอมทั้งสามกลิ่น">
+</header>
+<nav class="hidden" id="tabs">
+  <button id="tab-shop" aria-selected="true">น้ำหอม</button>
+  <button id="tab-points" aria-selected="false">คะแนนสะสม</button>
+</nav>
+<main>
+  <div id="status">กำลังโหลด…</div>
+
+  <section id="login" class="hidden">
+    <div class="card"><div class="body">
+      <p>เข้าสู่ระบบด้วย LINE เพื่อดูคะแนนสะสมและลงชื่อ pre-order</p>
+      <button class="btn" id="login-btn">เข้าสู่ระบบด้วย LINE</button>
+    </div></div>
+  </section>
+
+  <section id="shop" class="hidden">
+    <p class="notice">ตอนนี้ยังไม่เปิดขาย เพราะรอเลขจดแจ้ง อย. อยู่ ลงชื่อ pre-order ไว้ได้ เราจะแจ้งใน LINE เมื่อเปิดขาย
+      (ไม่มีการชำระเงินในตอนนี้)</p>
+    <div id="products"></div>
+  </section>
+
+  <section id="points" class="hidden">
+    <div class="card"><div class="body">
+      <div class="muted">คะแนนของคุณ</div>
+      <div class="total" id="total">0</div>
+      <div class="muted">กติกาการใช้คะแนนจะประกาศเมื่อเปิดขาย</div>
+    </div></div>
+    <div class="card"><div class="body">
+      <strong>วิธีสะสมคะแนน</strong>
+      <ul class="plain" id="rules"></ul>
+    </div></div>
+    <div class="card"><div class="body">
+      <strong>ประวัติคะแนน</strong>
+      <ul class="plain" id="ledger"></ul>
+    </div></div>
+    <p class="muted">ต้องการลบข้อมูลทั้งหมด (รวมคะแนนและรายชื่อ pre-order) พิมพ์ "ลบข้อมูล" ในแชท LINE ได้ทุกเมื่อ</p>
+  </section>
+</main>
+
+<dialog id="confirm">
+  <strong id="confirm-title"></strong>
+  <p class="muted" style="margin:6px 0 0">ลงชื่อรับแจ้งเมื่อเปิดขาย ยังไม่มีการสั่งซื้อหรือชำระเงิน</p>
+  <label class="consent" id="consent-row">
+    <input type="checkbox" id="consent">
+    <span>ยินยอมให้ BitterSweet เก็บ LINE user ID และกลิ่นที่สนใจ เพื่อแจ้งเมื่อเปิดขาย ตาม PDPA
+      ขอลบได้ทุกเมื่อโดยพิมพ์ "ลบข้อมูล" ในแชท</span>
+  </label>
+  <button class="btn" id="confirm-ok" disabled>ยืนยันลงชื่อ pre-order</button>
+  <button class="btn ghost" id="confirm-cancel">ยกเลิก</button>
+</dialog>
+
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js" charset="utf-8"></script>
+<script>
+const CONFIG = __APP_CONFIG__;
+const $ = (id) => document.getElementById(id);
+let state = { points: 0, ledger: [], waitlist: [], consent: false };
+let pending = null;
+
+function show(...ids) {
+  for (const id of ["status", "login", "shop", "points"]) $(id).classList.toggle("hidden", !ids.includes(id));
+}
+function fail(text) { $("status").textContent = text; show("status"); }
+const baht = (n) => n.toLocaleString("th-TH") + " บาท";
+
+async function api(path, options = {}) {
+  const res = await fetch(path, {
+    ...options,
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + liff.getIDToken() },
+  });
+  const body = await res.json().catch(() => ({}));
+  if (res.status === 401) {
+    // The ID token expired: log in again once to get a fresh one. A second 401 means a setup problem, not expiry.
+    if (sessionStorage.getItem("relogin")) throw new Error("login_failed");
+    sessionStorage.setItem("relogin", "1");
+    liff.logout();
+    liff.login({ redirectUri: location.href });
+    throw new Error("login");
+  }
+  sessionStorage.removeItem("relogin");
+  if (!res.ok) throw new Error(body.error || "http_" + res.status);
+  return body;
+}
+
+function renderProducts() {
+  const box = $("products");
+  box.textContent = "";
+  for (const p of CONFIG.products) {
+    const joined = state.waitlist.includes(p.id);
+    const card = document.createElement("div");
+    card.className = "card product";
+    card.innerHTML = `<div class="photo"></div><div class="body" style="flex:1">
+      <div class="row"><strong class="name"></strong><span class="price"></span></div>
+      <div class="muted size"></div><p class="blurb" style="margin:8px 0 0"></p>
+      <button class="btn"></button></div>`;
+    const photo = card.querySelector(".photo");
+    photo.style.backgroundColor = p.color;
+    if (p.image) photo.style.backgroundImage = "url(" + JSON.stringify(p.image) + ")";
+    card.querySelector(".name").textContent = p.name;
+    card.querySelector(".price").textContent = baht(p.price);
+    card.querySelector(".size").textContent = p.size;
+    card.querySelector(".blurb").textContent = p.blurb;
+    const btn = card.querySelector("button");
+    btn.textContent = joined ? "ลงชื่อ pre-order แล้ว ✓" : "ลงชื่อ pre-order";
+    btn.disabled = joined;
+    btn.onclick = () => openConfirm(p);
+    box.appendChild(card);
+  }
+}
+
+function renderPoints() {
+  $("total").textContent = state.points;
+  const rules = $("rules");
+  rules.textContent = "";
+  for (const [reason, r] of Object.entries(CONFIG.rules)) {
+    const li = document.createElement("li");
+    const got = state.ledger.some((x) => x.reason === reason);
+    li.innerHTML = "<span></span><span></span>";
+    li.children[0].textContent = r.label;
+    li.children[1].textContent = got ? "ได้แล้ว ✓" : "+" + r.points;
+    if (got) li.children[1].className = "done";
+    rules.appendChild(li);
+  }
+  const ledger = $("ledger");
+  ledger.textContent = "";
+  if (!state.ledger.length) {
+    const li = document.createElement("li");
+    li.textContent = "ยังไม่มีคะแนน";
+    li.className = "muted";
+    ledger.appendChild(li);
+  }
+  for (const x of state.ledger) {
+    const li = document.createElement("li");
+    li.innerHTML = "<span></span><span></span>";
+    li.children[0].textContent = x.label + " · " + new Date(x.created_at).toLocaleDateString("th-TH");
+    li.children[1].textContent = "+" + x.points;
+    ledger.appendChild(li);
+  }
+}
+
+function render() { renderProducts(); renderPoints(); }
+
+function openConfirm(p) {
+  pending = p;
+  $("confirm-title").textContent = p.name + " · " + p.size + " · " + baht(p.price);
+  // Consent already given (in the chat or earlier here) is not asked again.
+  $("consent-row").classList.toggle("hidden", state.consent);
+  $("consent").checked = false;
+  $("confirm-ok").disabled = !state.consent;
+  $("confirm").showModal();
+}
+$("consent").onchange = () => { $("confirm-ok").disabled = !$("consent").checked; };
+$("confirm-cancel").onclick = () => $("confirm").close();
+$("confirm-ok").onclick = async () => {
+  const btn = $("confirm-ok");
+  btn.disabled = true;
+  try {
+    state = await api("/api/waitlist", {
+      method: "POST",
+      body: JSON.stringify({ product: pending.id, consent: state.consent || $("consent").checked }),
+    });
+    $("confirm").close();
+    render();
+  } catch (e) {
+    if (e.message !== "login") alert("ลงชื่อไม่สำเร็จ ลองอีกครั้งนะครับ");
+    btn.disabled = false;
+  }
+};
+
+function selectTab(name) {
+  $("tab-shop").setAttribute("aria-selected", String(name === "shop"));
+  $("tab-points").setAttribute("aria-selected", String(name === "points"));
+  show(name);
+}
+$("tab-shop").onclick = () => selectTab("shop");
+$("tab-points").onclick = () => selectTab("points");
+$("login-btn").onclick = () => liff.login({ redirectUri: location.href });
+
+async function main() {
+  try {
+    await liff.init({ liffId: CONFIG.liffId });
+  } catch {
+    return fail("เปิดหน้าเว็บไม่สำเร็จ ลองเปิดจากเมนูใน LINE อีกครั้งนะครับ");
+  }
+  if (!liff.isLoggedIn()) {
+    // Inside the LINE app this never shows: LIFF logs the customer in automatically.
+    return show("login");
+  }
+  try {
+    const profile = await liff.getProfile();
+    $("hello").textContent = "สวัสดี " + profile.displayName;
+  } catch { /* the name is only a greeting */ }
+  try {
+    state = await api("/api/me");
+  } catch (e) {
+    if (e.message === "login") return;
+    return fail(e.message === "rate_limited" ? "ใช้งานถี่เกินไป รอสักครู่แล้วลองใหม่นะครับ" : "โหลดข้อมูลไม่สำเร็จ ลองใหม่อีกครั้งนะครับ");
+  }
+  $("tabs").classList.remove("hidden");
+  render();
+  // liff.line.me/<id>?tab=points opens the points page (LIFF restores the query after login).
+  const wantPoints = new URLSearchParams(location.search).get("tab") === "points" || location.hash === "#points";
+  selectTab(wantPoints ? "points" : "shop");
+}
+main();
+</script>
+</body>
+</html>

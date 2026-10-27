@@ -46,6 +46,18 @@ export async function allowUserMessage(
   return count <= limit;
 }
 
+/** Limit on web-app API calls per user (separate from the chat limits). true = allowed. */
+export async function allowWebRequest(
+  db: D1Database,
+  userId: string,
+  limit: number,
+  windowSeconds: number,
+  now: number,
+): Promise<boolean> {
+  const count = await hit(db, `web:${userId}`, now + windowSeconds * 1000, now);
+  return count <= limit;
+}
+
 function utcDay(now: number): string {
   return new Date(now).toISOString().slice(0, 10);
 }

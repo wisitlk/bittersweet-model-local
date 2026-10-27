@@ -5,8 +5,12 @@ compatibility_date = "2026-10-01"
 # Load the content files as plain text strings (imported in src/index.ts).
 [[rules]]
 type = "Text"
-globs = ["**/*.md", "**/*.txt"]
+globs = ["**/*.md", "**/*.txt", "**/*.html"]
 fallthrough = true
+
+# Images for the web app (public/img/...). Cloudflare serves these files directly, free, before the Worker runs.
+[assets]
+directory = "public"
 
 # D1 database (see SETUP.md, step "Create the database").
 # The owner's existing database bitter_sweet (an id is not a secret). New owners: `npx wrangler d1 create <name>`.
@@ -35,6 +39,10 @@ USER_MSG_LIMIT = "20"          # messages per user ...
 USER_WINDOW_SECONDS = "600"    # ... per this many seconds
 USER_DAILY_LIMIT = "60"        # messages per user per UTC day
 DAILY_CLAUDE_CAP = "1500"      # max Claude calls per UTC day, all users together
+
+# LINE web app (docs/LIFF.md). Neither is a secret. Empty = the web app answers 503 and the chat bot is unaffected.
+LIFF_ID = ""                   # from LINE Developers -> LINE Login channel -> LIFF tab, e.g. 2001234567-AbCdEfGh
+LINE_LOGIN_CHANNEL_ID = ""     # the LINE Login channel's Channel ID (Basic settings), e.g. 2001234567
 
 # Secrets (set with `npx wrangler secret put <NAME>`, never written here):
 #   LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN, SHEETS_WEBHOOK_URL, SHEETS_TOKEN,

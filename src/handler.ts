@@ -3,6 +3,7 @@ import { askGemini, DEFAULT_GEMINI_MODEL, DEFAULT_GEMINI_THINKING } from "./gemi
 import { askLocal, clampTimeout, DEFAULT_LOCAL_MODEL } from "./llm";
 import { buildCrmRow, sendCrmRow, WAIT_UNTIL_BUDGET_MS } from "./crm";
 import { replyText, startLoading } from "./line";
+import { deleteLoyalty } from "./loyalty";
 import { APOLOGY_REPLY, BUSY_REPLY, DAILY_CAP_REPLY, NON_TEXT_REPLY, RATE_LIMITED_REPLY } from "./messages";
 import {
   allowDailyCall,
@@ -35,13 +36,13 @@ export const MAX_USER_TEXT_CHARS = 1000;
  * Worst case for one text message on the full path:
  *   D1: claim 1 + per-user window 1 + per-user day 1 + global day 1 + history 1 + consent read 1
  *       + save turn 1 (one two-row INSERT) + consent upsert 1 = 8
- *       (a delete request replaces the save and upsert with 2 deletes, history and consent: also 8)
+ *       (a delete request replaces the save and upsert with 3 deletes: history, consent, and points + waitlist in one batch: 9)
  *   fetch: loading 1 + AI model 1 (Claude, Gemini or local Qwen) + LINE reply 1 + Apps Script 2 (one redirect hop) = 5
- *       (a delete row is posted twice if the first try fails: +2, but then there is one D1 write less)
+ *       (a delete row is posted twice if the first try fails: +2)
  *   one apology reply after a failure = 1
- *   total 16
- * So 2 full-path events cost 32. The remaining subrequests go to one-fetch replies (greeting, "please type
- * text", "please send that again"), capped at 10, so an invocation never exceeds 32 + 10 = 42 < 50.
+ *   total 17 (delete path: 9 + 5 + 2 + 1)
+ * So 2 full-path events cost 34. The remaining subrequests go to one-fetch replies (greeting, "please type
+ * text", "please send that again"), capped at 10, so an invocation never exceeds 34 + 10 = 44 < 50.
  * Events beyond those caps are dropped. LINE normally sends one event per webhook, so this only matters in bursts.
  *
  * Time: ctx.waitUntil() keeps the Worker alive up to 30 s after the response is sent. Claude and Gemini time out at 20 s,
@@ -49,7 +50,7 @@ export const MAX_USER_TEXT_CHARS = 1000;
  * the reply, history write and CRM post run in parallel after the model, so the usual worst case is about
  * 24 + 5 s plus a few database round trips.
  */
-export const FULL_PATH_COST = 16;
+export const FULL_PATH_COST = 17;
 export const MAX_FULL_EVENTS = 2;
 export const MAX_LIGHT_EVENTS = 10;
 
@@ -180,8 +181,8 @@ export async function handleEvent(
     if (!resp) return await say(APOLOGY_REPLY);
 
     const persist = resp.crm.delete_request
-      ? // The customer asked to delete their data: drop the stored conversation and consent, save nothing.
-        Promise.all([deleteHistory(env.DB, ev.userId), deleteConsent(env.DB, ev.userId)])
+      ? // The customer asked to delete their data: drop the stored conversation, consent, points and waitlist.
+        Promise.all([deleteHistory(env.DB, ev.userId), deleteConsent(env.DB, ev.userId), deleteLoyalty(env.DB, ev.userId)])
       : // Only the reply text is stored as the assistant turn, never the CRM fields. Consent is remembered separately.
         Promise.all([
           saveTurn(env.DB, ev.userId, userText, resp.reply, now),

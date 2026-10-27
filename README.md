@@ -37,6 +37,7 @@ LINE user --> LINE platform --POST /webhook--> Cloudflare Worker --> D1 (history
 | `scripts/send_test_event.ps1` | Sends a correctly signed test webhook |
 | `scripts/bench_local.ts` | `npm run bench:local` / `bench:gemini`: times the model with the real prompt |
 | `docs/GEMINI.md` | Gemini key, billing, secret, troubleshooting |
+| `docs/LIFF.md` | LINE web app (catalog, pre-order waitlist, points): LINE Login channel, LIFF app, photos |
 | `docs/LOCAL-LLM.md` | Mac mini setup: Ollama, Qwen, tunnel, Access lock |
 | `test/` | Vitest tests (real SQLite stands in for D1) |
 

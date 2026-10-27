@@ -60,6 +60,8 @@ wrong; do not weaken or delete a test to make it pass.
 | `src/line.ts`, `src/signature.ts`, `src/webhook.ts` | LINE API calls, HMAC check, webhook body guards |
 | `src/messages.ts` | Fixed Thai replies (busy, limit reached, apology, non-text) |
 | `content/` | `knowledge.md`, `system_prompt.md`, `greeting_th.txt` — bundled as text modules |
+| `src/liff.ts`, `src/catalog.ts`, `src/loyalty.ts` | LINE web app (`/app`, `/api/me`, `/api/waitlist`): ID-token check, catalog, points, waitlist (see `docs/LIFF.md`) |
+| `web/app.html`, `public/img/` | The web app page (text module) and its photos (static assets) |
 | `schema.sql` | D1 tables |
 | `apps_script/Code.gs` | The Sheet's web app (token check, row validation, delete-by-user, handoff email) |
 | `wrangler.toml` | D1 binding, `[vars]` limits and model id, daily cron |
@@ -72,7 +74,8 @@ wrong; do not weaken or delete a test to make it pass.
 - **No profile data in the Sheet without consent.** Without `consent_pdpa`, only flags go out for
   handoff or deletion — never message text or profile fields. A deletion request clears D1 history,
   consent and the user's Sheet rows.
-- **Verify every webhook** (`x-line-signature`) before parsing; keep the body size cap.
+- **Verify every webhook** (`x-line-signature`) before parsing; keep the body size cap. Web app API calls are
+  trusted only after LINE verifies the ID token (`verifyIdToken`); the waitlist there needs PDPA consent too.
 - **Bound the spend.** Keep the per-user and daily caps; the Workers Free plan allows 50
   subrequests per invocation, so re-check the budget comment in `handler.ts` after adding any
   D1 query or fetch.

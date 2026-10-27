@@ -12,6 +12,8 @@ export interface Env {
   USER_WINDOW_SECONDS?: string;
   USER_DAILY_LIMIT?: string;
   DAILY_CLAUDE_CAP?: string;
+  LIFF_ID?: string; // LINE web app id (not a secret)
+  LINE_LOGIN_CHANNEL_ID?: string; // LINE Login channel that owns the LIFF app; ID tokens are checked against it
   // secrets
   LINE_CHANNEL_SECRET: string;
   LINE_CHANNEL_ACCESS_TOKEN: string;
