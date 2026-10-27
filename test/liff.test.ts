@@ -82,6 +82,11 @@ describe("web app page", () => {
     expect(html).not.toContain("__APP_CONFIG__");
   });
 
+  it("also answers /app/ (LIFF endpoint entered with a trailing slash)", async () => {
+    stubLine();
+    expect((await call(makeEnv(), req("/app/"))).status).toBe(200);
+  });
+
   it("escapes < in the embedded config", () => {
     expect(renderApp("</script><x>")).not.toContain("</script><x>");
   });

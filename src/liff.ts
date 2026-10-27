@@ -109,7 +109,7 @@ export function waitlistCrmRow(userId: string, productId: string, now: Date): Cr
 export async function handleWeb(request: Request, env: Env, ctx: ExecutionContext, now = Date.now()): Promise<Response | null> {
   const { pathname } = new URL(request.url);
 
-  if (pathname === "/app" && request.method === "GET") {
+  if ((pathname === "/app" || pathname === "/app/") && request.method === "GET") {
     if (!env.LIFF_ID) return new Response("Web app not configured (LIFF_ID)", { status: 503 });
     return new Response(renderApp(env.LIFF_ID), {
       headers: {
