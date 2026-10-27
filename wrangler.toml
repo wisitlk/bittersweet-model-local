@@ -9,11 +9,11 @@ globs = ["**/*.md", "**/*.txt"]
 fallthrough = true
 
 # D1 database (see SETUP.md, step "Create the database").
-# Run `npx wrangler d1 create bittersweet-concierge`, then paste the database_id it prints below.
+# The owner's existing database bitter_sweet (an id is not a secret). New owners: `npx wrangler d1 create <name>`.
 [[d1_databases]]
 binding = "DB"
-database_name = "bittersweet-concierge"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_name = "bitter_sweet"
+database_id = "e334bf7d-58ed-4e1d-901d-c1e278fac321"
 
 # Daily cleanup of data older than 7 days (03:17 UTC), see scheduled() in src/index.ts.
 [triggers]
