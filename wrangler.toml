@@ -23,8 +23,8 @@ crons = ["17 3 * * *"]
 # AI model: "gemini" = Google Gemini API (docs/GEMINI.md), "local" = Qwen in Ollama on the Mac mini through a
 # Cloudflare Tunnel (docs/LOCAL-LLM.md), "anthropic" = Claude.
 LLM_PROVIDER = "gemini"
-GEMINI_MODEL = "gemini-flash-latest"
-GEMINI_THINKING_LEVEL = "low"
+GEMINI_MODEL = "gemini-3.6-flash"     # tested live 2026-10-27; 3.8-flash at "low" took over 20 s
+GEMINI_THINKING_LEVEL = "minimal"   # 3.6-flash supports minimal; 3.8-flash does not (HTTP 400)
 # Only used when LLM_PROVIDER is "local".
 LLM_BASE_URL = "REPLACE_WITH_TUNNEL_URL"   # e.g. https://llm.your-domain.com (no trailing /api)
 LLM_MODEL = "qwen3.8:27b"                  # the exact tag shown by `ollama list` on the Mac

@@ -8,8 +8,9 @@ import { errName, isRecord } from "./guards";
  * ~300 tokens a reply needs.
  */
 
-// The alias AI Studio shows for new keys; it follows Google's current Flash model.
-export const DEFAULT_GEMINI_MODEL = "gemini-flash-latest";
+// Tested live on 2026-10-27: gemini-3.8-flash at "low" thinking exceeded the 20 s timeout and rejects "minimal";
+// gemini-3.6-flash at "minimal" answers in time.
+export const DEFAULT_GEMINI_MODEL = "gemini-3.6-flash";
 export const DEFAULT_GEMINI_THINKING = "low";
 export const GEMINI_TIMEOUT_MS = 20_000;
 const API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";

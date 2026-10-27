@@ -34,11 +34,12 @@ history. The script sends five sample Thai messages with the real system prompt.
 npx wrangler secret put GEMINI_API_KEY
 ```
 Paste the key at the hidden prompt. In `wrangler.toml` → `[vars]`, keep `LLM_PROVIDER = "gemini"`.
-`GEMINI_MODEL` is `gemini-flash-latest`, the alias AI Studio shows; to pin a version, use another model id listed in AI Studio. Then
+`GEMINI_MODEL` is `gemini-3.6-flash` with `GEMINI_THINKING_LEVEL = "minimal"`, tested live on 2026-10-27
+(`gemini-3.8-flash` at `low` took over 20 s, and it rejects `minimal` with HTTP 400). To try another model,
+run `bench:gemini` with `GEMINI_MODEL=...` first. Then
 continue with SETUP.md step 8 (deploy).
 
-`GEMINI_THINKING_LEVEL` is `low`. Gemini 3.x models cannot switch thinking off; `low` keeps replies
-fast. Some models (for example `gemini-3.6-flash`) also accept `minimal`, which is faster still.
+Gemini 3.x models cannot switch thinking off. `minimal` is the fastest level, but only some models accept it.
 
 ## When something goes wrong
 
