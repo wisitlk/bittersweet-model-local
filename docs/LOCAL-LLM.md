@@ -76,7 +76,7 @@ For a quick test without a domain, `cloudflared tunnel --url http://localhost:11
 ## 5. Tell the Worker where the model is (5 min)
 
 1. In `wrangler.toml` → `[vars]`: set `LLM_BASE_URL = "https://llm.<your-domain>"` and
-   `LLM_MODEL` to the name from `ollama list`. Leave `LLM_PROVIDER = "local"`.
+   `LLM_MODEL` to the name from `ollama list`. Set `LLM_PROVIDER = "local"`.
 2. Store the two token values at hidden prompts (paste when asked; nothing shows on screen):
    ```
    npx wrangler secret put LLM_ACCESS_CLIENT_ID

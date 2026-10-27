@@ -1,6 +1,7 @@
 # Copy to .dev.vars for `npm run dev` (local only, never commit .dev.vars).
 LINE_CHANNEL_SECRET=
 LINE_CHANNEL_ACCESS_TOKEN=
+GEMINI_API_KEY=
 LLM_ACCESS_CLIENT_ID=
 LLM_ACCESS_CLIENT_SECRET=
 # ANTHROPIC_API_KEY= (only if LLM_PROVIDER is "anthropic")

@@ -1,4 +1,5 @@
 import { askClaude, DEFAULT_MODEL, type ChatMessage, type ConciergeResponse } from "./claude";
+import { askGemini, DEFAULT_GEMINI_MODEL, DEFAULT_GEMINI_THINKING } from "./gemini";
 import { askLocal, clampTimeout, DEFAULT_LOCAL_MODEL } from "./llm";
 import { buildCrmRow, sendCrmRow, WAIT_UNTIL_BUDGET_MS } from "./crm";
 import { replyText, startLoading } from "./line";
@@ -35,7 +36,7 @@ export const MAX_USER_TEXT_CHARS = 1000;
  *   D1: claim 1 + per-user window 1 + per-user day 1 + global day 1 + history 1 + consent read 1
  *       + save turn 1 (one two-row INSERT) + consent upsert 1 = 8
  *       (a delete request replaces the save and upsert with 2 deletes, history and consent: also 8)
- *   fetch: loading 1 + AI model 1 (Claude or local Qwen) + LINE reply 1 + Apps Script 2 (one redirect hop) = 5
+ *   fetch: loading 1 + AI model 1 (Claude, Gemini or local Qwen) + LINE reply 1 + Apps Script 2 (one redirect hop) = 5
  *       (a delete row is posted twice if the first try fails: +2, but then there is one D1 write less)
  *   one apology reply after a failure = 1
  *   total 16
@@ -43,7 +44,7 @@ export const MAX_USER_TEXT_CHARS = 1000;
  * text", "please send that again"), capped at 10, so an invocation never exceeds 32 + 10 = 42 < 50.
  * Events beyond those caps are dropped. LINE normally sends one event per webhook, so this only matters in bursts.
  *
- * Time: ctx.waitUntil() keeps the Worker alive up to 30 s after the response is sent. Claude times out at 20 s,
+ * Time: ctx.waitUntil() keeps the Worker alive up to 30 s after the response is sent. Claude and Gemini time out at 20 s,
  * the local model at LLM_TIMEOUT_MS (default 24 s, capped at 25 s), LINE calls at 3 s, the Apps Script call at 5 s;
  * the reply, history write and CRM post run in parallel after the model, so the usual worst case is about
  * 24 + 5 s plus a few database round trips.
@@ -88,7 +89,7 @@ async function safeReply(token: string, replyToken: string, text: string, what: 
   }
 }
 
-/** One AI call per message: the local Qwen model when LLM_PROVIDER is "local", otherwise Claude. */
+/** One AI call per message: local Qwen ("local"), Google Gemini ("gemini"), otherwise Claude. */
 function askModel(
   env: Env,
   system: string,
@@ -96,6 +97,21 @@ function askModel(
   userText: string,
   consentGiven: boolean,
 ): Promise<ConciergeResponse | null> {
+  if (env.LLM_PROVIDER === "gemini") {
+    if (!env.GEMINI_API_KEY) {
+      console.error("gemini_not_configured");
+      return Promise.resolve(null);
+    }
+    return askGemini(
+      env.GEMINI_API_KEY,
+      env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL,
+      system,
+      history,
+      userText,
+      consentGiven,
+      env.GEMINI_THINKING_LEVEL || DEFAULT_GEMINI_THINKING,
+    );
+  }
   if (env.LLM_PROVIDER === "local") {
     if (!env.LLM_BASE_URL) {
       console.error("local_not_configured");

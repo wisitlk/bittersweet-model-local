@@ -20,8 +20,12 @@ database_id = "REPLACE_WITH_D1_DATABASE_ID"
 crons = ["17 3 * * *"]
 
 [vars]
-# AI model. "local" = Qwen in Ollama on the Mac mini, reached through a Cloudflare Tunnel (docs/LOCAL-LLM.md).
-LLM_PROVIDER = "local"
+# AI model: "gemini" = Google Gemini API (docs/GEMINI.md), "local" = Qwen in Ollama on the Mac mini through a
+# Cloudflare Tunnel (docs/LOCAL-LLM.md), "anthropic" = Claude.
+LLM_PROVIDER = "gemini"
+GEMINI_MODEL = "gemini-3.8-flash"
+GEMINI_THINKING_LEVEL = "low"
+# Only used when LLM_PROVIDER is "local".
 LLM_BASE_URL = "REPLACE_WITH_TUNNEL_URL"   # e.g. https://llm.your-domain.com (no trailing /api)
 LLM_MODEL = "qwen3.8:27b"                  # the exact tag shown by `ollama list` on the Mac
 LLM_TIMEOUT_MS = "24000"                   # capped at 25000 in code: the Worker has about 30 s per message
@@ -34,5 +38,6 @@ DAILY_CLAUDE_CAP = "1500"      # max Claude calls per UTC day, all users togethe
 
 # Secrets (set with `npx wrangler secret put <NAME>`, never written here):
 #   LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN, SHEETS_WEBHOOK_URL, SHEETS_TOKEN,
-#   LLM_ACCESS_CLIENT_ID, LLM_ACCESS_CLIENT_SECRET (Cloudflare Access service token for the tunnel)
+#   GEMINI_API_KEY only if LLM_PROVIDER is "gemini"
+#   LLM_ACCESS_CLIENT_ID, LLM_ACCESS_CLIENT_SECRET only if LLM_PROVIDER is "local" (tunnel Access token)
 #   ANTHROPIC_API_KEY only if LLM_PROVIDER is "anthropic"
