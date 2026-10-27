@@ -100,8 +100,9 @@ describe("askGemini", () => {
   });
 
   it("returns null for HTTP errors, safety blocks, truncation, bad JSON and bad shape", async () => {
-    stub({ error: { code: 429 } }, 429);
+    stub({ error: { code: 429, status: "RESOURCE_EXHAUSTED" } }, 429);
     expect(await askGemini("k", "m", "s", [], "hi")).toBeNull();
+    expect(console.error).toHaveBeenCalledWith("gemini_http_error", 429, "RESOURCE_EXHAUSTED");
     stub(gemini([], "SAFETY"));
     expect(await askGemini("k", "m", "s", [], "hi")).toBeNull();
     stub(gemini([{ text: "{" }], "MAX_TOKENS"));

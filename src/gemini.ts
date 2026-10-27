@@ -8,7 +8,8 @@ import { errName, isRecord } from "./guards";
  * ~300 tokens a reply needs.
  */
 
-export const DEFAULT_GEMINI_MODEL = "gemini-3.8-flash";
+// The alias AI Studio shows for new keys; it follows Google's current Flash model.
+export const DEFAULT_GEMINI_MODEL = "gemini-flash-latest";
 export const DEFAULT_GEMINI_THINKING = "low";
 export const GEMINI_TIMEOUT_MS = 20_000;
 const API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
@@ -55,7 +56,10 @@ export async function askGemini(
       signal: AbortSignal.timeout(GEMINI_TIMEOUT_MS),
     });
     if (!res.ok) {
-      console.error("gemini_http_error", res.status);
+      // Google's error status (e.g. NOT_FOUND, PERMISSION_DENIED) names the cause; it never contains the key or text.
+      const err: unknown = await res.json().catch(() => null);
+      const status = isRecord(err) && isRecord(err.error) && typeof err.error.status === "string" ? err.error.status : "";
+      console.error("gemini_http_error", res.status, status);
       return null;
     }
     const data: unknown = await res.json();

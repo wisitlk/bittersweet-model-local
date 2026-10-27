@@ -23,7 +23,7 @@ crons = ["17 3 * * *"]
 # AI model: "gemini" = Google Gemini API (docs/GEMINI.md), "local" = Qwen in Ollama on the Mac mini through a
 # Cloudflare Tunnel (docs/LOCAL-LLM.md), "anthropic" = Claude.
 LLM_PROVIDER = "gemini"
-GEMINI_MODEL = "gemini-3.8-flash"
+GEMINI_MODEL = "gemini-flash-latest"
 GEMINI_THINKING_LEVEL = "low"
 # Only used when LLM_PROVIDER is "local".
 LLM_BASE_URL = "REPLACE_WITH_TUNNEL_URL"   # e.g. https://llm.your-domain.com (no trailing /api)

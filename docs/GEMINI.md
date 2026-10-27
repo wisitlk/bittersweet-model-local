@@ -34,7 +34,7 @@ history. The script sends five sample Thai messages with the real system prompt.
 npx wrangler secret put GEMINI_API_KEY
 ```
 Paste the key at the hidden prompt. In `wrangler.toml` → `[vars]`, keep `LLM_PROVIDER = "gemini"`.
-`GEMINI_MODEL` is `gemini-3.8-flash`; change it only to another model id listed in AI Studio. Then
+`GEMINI_MODEL` is `gemini-flash-latest`, the alias AI Studio shows; to pin a version, use another model id listed in AI Studio. Then
 continue with SETUP.md step 8 (deploy).
 
 `GEMINI_THINKING_LEVEL` is `low`. Gemini 3.x models cannot switch thinking off; `low` keeps replies
@@ -49,7 +49,7 @@ fast. Some models (for example `gemini-3.6-flash`) also accept `minimal`, which 
 | `gemini_not_configured` | `GEMINI_API_KEY` secret missing | `npx wrangler secret put GEMINI_API_KEY` |
 | `gemini_http_error 400` | key wrong, or the model rejects a setting (e.g. thinking level) | re-enter the key; try `bench:gemini` with another `GEMINI_THINKING_LEVEL` |
 | `gemini_http_error 403` | key disabled or API not enabled for the project | check the key in AI Studio |
-| `gemini_http_error 404` | model id not found | copy a model id from AI Studio into `GEMINI_MODEL` |
+| `gemini_http_error 404 NOT_FOUND` | model id not found | copy a model id from AI Studio into `GEMINI_MODEL` |
 | `gemini_http_error 429` | free-tier or quota limit reached | turn on billing / raise quota |
 | `gemini_bad_finish_reason SAFETY` | Gemini blocked the answer | rare for perfume chat; the student gets the apology |
 | `gemini_bad_finish_reason MAX_TOKENS` / `gemini_schema_mismatch` | answer cut off or not in the required JSON | lower thinking level or try another model |
