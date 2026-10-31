@@ -9,6 +9,30 @@ import { errName, isRecord } from "./guards";
  */
 
 export const DEFAULT_LOCAL_MODEL = "gemma4:e4b";
+
+// Live 2026-10-31: Gemma 4 E4B sometimes kept writing one JSON string until num_predict ran out (12-25 s,
+// done_reason "length"), in about 1 of 3 tries for some questions. Ollama turns the schema into a grammar that
+// enforces maxLength, so each string is cut off at a sane size and the JSON always closes in time.
+export const LOCAL_REPLY_MAX_CHARS = 600;
+export const LOCAL_FIELD_MAX_CHARS = 120;
+const field = { type: "string", maxLength: LOCAL_FIELD_MAX_CHARS } as const;
+export const LOCAL_RESPONSE_SCHEMA = {
+  ...RESPONSE_SCHEMA,
+  properties: {
+    ...RESPONSE_SCHEMA.properties,
+    reply: { ...RESPONSE_SCHEMA.properties.reply, maxLength: LOCAL_REPLY_MAX_CHARS },
+    crm: {
+      ...RESPONSE_SCHEMA.properties.crm,
+      properties: {
+        ...RESPONSE_SCHEMA.properties.crm.properties,
+        scents_smelled: field,
+        liked: field,
+        disliked: field,
+        preferences: field,
+      },
+    },
+  },
+} as const;
 // waitUntil keeps the Worker alive about 30 s; the LINE reply and CRM post still need a few seconds after this.
 export const DEFAULT_LOCAL_TIMEOUT_MS = 24_000;
 const MAX_LOCAL_TIMEOUT_MS = 25_000;
@@ -40,10 +64,11 @@ export function buildLocalRequestBody(
     ],
     stream: false,
     think: false,
-    format: RESPONSE_SCHEMA,
+    format: LOCAL_RESPONSE_SCHEMA,
     // Keep the model loaded between students so nobody waits for it to load from disk.
     keep_alive: -1,
-    options: { temperature: 0.3, num_predict: 800, num_ctx: 8192 },
+    // A good reply is ~200 tokens of JSON; with the maxLength limits above the longest valid one stays under 600.
+    options: { temperature: 0.3, repeat_penalty: 1.15, num_predict: 600, num_ctx: 8192 },
   };
 }
 

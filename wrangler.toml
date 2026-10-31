@@ -35,7 +35,7 @@ GEMINI_FALLBACK_THINKING = "low"
 # Only used when LLM_PROVIDER is "hybrid" or "local".
 LLM_BASE_URL = ""                          # the trycloudflare.com address printed by mac-mini/start.sh
 LLM_MODEL = "gemma4:e4b"                   # the exact tag shown by `ollama list` on the Mac mini
-LLM_TIMEOUT_MS = "12000"                   # hybrid caps the Mac mini at 12 s so Gemini keeps time
+LLM_TIMEOUT_MS = "9000"                    # hybrid caps the Mac mini at 9 s so Gemini keeps time
 # Only used when LLM_PROVIDER is "anthropic".
 CLAUDE_MODEL = "claude-sonnet-5-5"
 USER_MSG_LIMIT = "20"          # messages per user ...

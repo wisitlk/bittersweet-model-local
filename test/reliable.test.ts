@@ -111,6 +111,19 @@ describe("askGeminiReliable", () => {
     expect(modelCalls()).toHaveLength(0);
   });
 
+  it("leaves the backup at least 7 s when time is short (after a slow Mac mini)", async () => {
+    const timeouts: number[] = [];
+    const real = AbortSignal.timeout.bind(AbortSignal);
+    vi.spyOn(AbortSignal, "timeout").mockImplementation((ms: number) => {
+      timeouts.push(ms);
+      return real(ms);
+    });
+    stubSequence([overloaded, ok]);
+    await askGeminiReliable(plan({ deadline: Date.now() + 14_000, maxCalls: 2 }), "s", [], "hi");
+    expect(timeouts[0]).toBeLessThanOrEqual(7_000);
+    expect(timeouts[1]).toBeGreaterThanOrEqual(6_500);
+  });
+
   it("caps the first try so the backup keeps time", async () => {
     const timeouts: number[] = [];
     const real = AbortSignal.timeout.bind(AbortSignal);
@@ -121,8 +134,9 @@ describe("askGeminiReliable", () => {
     stubSequence([overloaded, ok]);
     await askGeminiReliable(plan(), "s", [], "hi");
     expect(timeouts[0]).toBe(12_000);
-    expect(timeouts[1]).toBeGreaterThan(12_000);
-    expect(timeouts[1]).toBeLessThanOrEqual(23_000);
+    // The backup is not the last try (the main model may get one more), so it is capped and leaves 7 s too.
+    expect(timeouts[1]).toBeGreaterThan(10_000);
+    expect(timeouts[1]).toBeLessThanOrEqual(12_000);
   });
 });
 

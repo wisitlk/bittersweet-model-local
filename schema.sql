@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS consents (
 CREATE TABLE IF NOT EXISTS points (
   user_id     TEXT NOT NULL,
   reason      TEXT NOT NULL,
-  points      INTEGER NOT NULL,
+  amount      INTEGER NOT NULL,   -- named "amount" in the live database bitter_sweet (created 2026-10-27)
   created_at  INTEGER NOT NULL,
   PRIMARY KEY (user_id, reason)
 );

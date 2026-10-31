@@ -21,6 +21,9 @@ export const DEFAULT_GEMINI_FALLBACK_THINKING = "low";
 export const GEMINI_FIRST_TRY_MS = 12_000;
 // A try with less time than this left is not started.
 export const MIN_TRY_MS = 4_000;
+// When another try may follow, the first one leaves at least this much for it (live 2026-10-31: a 503 on the
+// main model left Flash-Lite too little time after a slow Mac mini).
+export const BACKUP_RESERVE_MS = 7_000;
 const RETRY_PAUSE_MS = 500;
 const API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
@@ -113,8 +116,8 @@ export interface GeminiPlan {
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /**
- * Gets an answer if Gemini can give one before the deadline: main model first (capped at GEMINI_FIRST_TRY_MS),
- * then the backup model with the time left, then the main model again if time and calls remain. Any failure
+ * Gets an answer if Gemini can give one before the deadline: main model first (capped at GEMINI_FIRST_TRY_MS and
+ * leaving BACKUP_RESERVE_MS), then the backup model, then the main model again if time and calls remain. Any failure
  * moves to the next try: a 503 or a timeout is overload, a 429 or 404 on one model says nothing about the other.
  */
 export async function askGeminiReliable(
@@ -137,7 +140,8 @@ export async function askGeminiReliable(
       break;
     }
     if (i > 0) console.error(t === main ? "gemini_retry" : "gemini_fallback", i);
-    const timeout = i === 0 ? Math.min(GEMINI_FIRST_TRY_MS, left) : left;
+    const last = i === tries.length - 1;
+    const timeout = last ? left : Math.min(GEMINI_FIRST_TRY_MS, Math.max(MIN_TRY_MS, left - BACKUP_RESERVE_MS));
     const resp = await askGemini(plan.apiKey, t.model, system, history, userText, consentGiven, t.thinking, timeout);
     if (resp) return resp;
   }

@@ -55,13 +55,13 @@ export const MAX_USER_TEXT_CHARS = 1000;
  *
  * Time: ctx.waitUntil() keeps the Worker alive up to 30 s after the response is sent. All model tries for one
  * message share MODEL_BUDGET_MS from the start of the event (Claude alone: 20 s; local alone: LLM_TIMEOUT_MS,
- * capped at 25 s; in "hybrid" the Mac mini gets at most HYBRID_LOCAL_MAX_MS so Gemini keeps time for its tries).
+ * capped at 25 s; in "hybrid" the Mac mini gets at most HYBRID_LOCAL_MAX_MS, 9 s, so Gemini keeps ~13 s for two tries).
  * LINE calls time out at 3 s, the Apps Script call at 5 s; the reply, history write and CRM post run in parallel
  * after the model, so the usual worst case is about 23 + 5 s plus a few database round trips.
  */
 export const MAX_MODEL_CALLS = 3;
 export const MODEL_BUDGET_MS = 23_000;
-export const HYBRID_LOCAL_MAX_MS = 12_000;
+export const HYBRID_LOCAL_MAX_MS = 9_000;
 export const FULL_PATH_COST = 19;
 export const MAX_FULL_EVENTS = 2;
 export const MAX_LIGHT_EVENTS = 10;

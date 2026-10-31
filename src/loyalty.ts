@@ -9,7 +9,7 @@ export interface PointRow {
 /** Awards the points for `reason` once. Returns true if they were new. Safe to call again (double taps, retries). */
 export async function awardPoints(db: D1Database, userId: string, reason: PointReason, now: number): Promise<boolean> {
   const r = await db
-    .prepare("INSERT INTO points (user_id, reason, points, created_at) VALUES (?1, ?2, ?3, ?4) ON CONFLICT DO NOTHING")
+    .prepare("INSERT INTO points (user_id, reason, amount, created_at) VALUES (?1, ?2, ?3, ?4) ON CONFLICT DO NOTHING")
     .bind(userId, reason, POINT_RULES[reason].points, now)
     .run();
   return r.meta.changes === 1;
@@ -17,7 +17,7 @@ export async function awardPoints(db: D1Database, userId: string, reason: PointR
 
 export async function loadPoints(db: D1Database, userId: string): Promise<PointRow[]> {
   const { results } = await db
-    .prepare("SELECT reason, points, created_at FROM points WHERE user_id = ?1 ORDER BY created_at, reason")
+    .prepare("SELECT reason, amount AS points, created_at FROM points WHERE user_id = ?1 ORDER BY created_at, reason")
     .bind(userId)
     .all<PointRow>();
   return results;

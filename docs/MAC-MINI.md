@@ -1,11 +1,11 @@
 # Gemma on the Mac mini, Gemini as backup ("hybrid")
 
-The bot asks Gemma 4 on your own Mac mini first. If the Mac mini is off, asleep, busy or slower than 12 s, the
+The bot asks Gemma 4 on your own Mac mini first. If the Mac mini is off, asleep, busy or slower than 9 s, the
 Worker asks Gemini instead (main model, then the Flash-Lite backup), so students still get an answer.
 
 ```
 LINE → Cloudflare Worker ──HTTPS + 2 secret headers──▶ quick tunnel ──▶ gate (port 11435) ──▶ Ollama app (Gemma)
-                     └──── if no good answer in 12 s ──▶ Gemini API
+                     └──── if no good answer in 9 s  ──▶ Gemini API
 ```
 
 - A **tunnel** (`cloudflared`) lets the Worker reach a program on the Mac without opening your router. It only
@@ -41,7 +41,7 @@ cannot, so do not run Gemma in Docker here.
 git clone https://github.com/wisitlk/bittersweet-model-local.git
 cd bittersweet-model-local
 npm install
-npm run bench:local        # each reply should say "ok" (under 12 s); run twice, the first load is slower
+npm run bench:local        # each reply should say "ok" (under 9 s); run twice, the first load is slower
 ```
 
 ## 3. Start the gate and the tunnel (each demo day)
