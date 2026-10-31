@@ -54,7 +54,15 @@ flowchart TD
 
 ## Flow 3: concept (data to marketing)
 
-PDPA consent -> survey in LINE -> analyse by age group and personality type -> segments (clustering) -> marketing,
+![BitterSweet concept: from customer data to AI answers (8 steps)](img/concept-pipeline.png)
+
+The full concept (not built yet) has 8 steps in three stages: prepare the data (collection, consent and cleaning,
+feature selection), find and understand the groups (clustering, validation and prediction, interpretation), and
+respond and adapt (retrieve and answer, feedback). Steps 2-6 run offline, e.g. monthly; step 7 runs on every message.
+Built so far: PDPA consent, the LINE survey, and the chat bot reading the survey result. The picture names Gemma 4
+12B for step 7; the Mac mini runs Gemma 4 E4B.
+
+In short: PDPA consent -> survey in LINE -> analyse by age group and personality type -> segments (clustering) -> marketing,
 and a better chat answer for each customer. The survey answer codes match `scent-concierge/sample-data/SURVEY.md`.
 
 ## Data (D1 `bitter_sweet`)
