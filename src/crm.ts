@@ -18,7 +18,7 @@ export const CRM_COLUMNS = [
   "liked",
   "disliked",
   "preferences",
-  "discovery_set_interest",
+  "sample_interest",
   "preorder_waitlist",
   "consent_pdpa",
   "handoff",
@@ -34,7 +34,7 @@ export interface CrmRow {
   liked: string;
   disliked: string;
   preferences: string;
-  discovery_set_interest: boolean;
+  sample_interest: boolean;
   preorder_waitlist: boolean;
   consent_pdpa: boolean;
   handoff: boolean;
@@ -72,7 +72,7 @@ export function buildCrmRow(
     liked: profile(crm.liked),
     disliked: profile(crm.disliked),
     preferences: profile(crm.preferences),
-    discovery_set_interest: consent ? crm.discovery_set_interest : false,
+    sample_interest: consent ? crm.sample_interest : false,
     preorder_waitlist: consent ? crm.preorder_waitlist : false,
     consent_pdpa: consent,
     handoff,

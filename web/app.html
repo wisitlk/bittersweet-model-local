@@ -19,7 +19,7 @@
   body { margin: 0; background: var(--bg); color: var(--ink);
     font: 16px/1.55 "Sukhumvit Set", "Noto Sans Thai", system-ui, sans-serif; }
   header { padding: 20px 16px 8px; }
-  .hero { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 16px; margin-top: 12px; }
+  .hero { display: block; width: 100%; aspect-ratio: 5 / 1; object-fit: cover; border-radius: 16px; margin-top: 12px; }
   h1 { margin: 0; font-size: 22px; letter-spacing: .5px; }
   .tag { color: var(--muted); font-size: 14px; margin: 2px 0 0; }
   nav { display: flex; gap: 8px; padding: 8px 16px; position: sticky; top: 0; background: var(--bg); z-index: 2; }
@@ -57,7 +57,7 @@
 <header>
   <h1>BitterSweet</h1>
   <p class="tag">You wear it for you first. · <span id="hello"></span></p>
-  <img class="hero" src="/img/booth.jpg" alt="บูธ BitterSweet กับน้ำหอมทั้งสามกลิ่น">
+  <img class="hero" src="/img/hero.jpg" alt="น้ำหอม BitterSweet ทั้ง 5 กลิ่น">
 </header>
 <nav class="hidden" id="tabs">
   <button id="tab-shop" aria-selected="true">น้ำหอม</button>
@@ -76,6 +76,24 @@
   <section id="shop" class="hidden">
     <p class="notice">ตอนนี้ยังไม่เปิดขาย เพราะรอเลขจดแจ้ง อย. อยู่ ลงชื่อ pre-order ไว้ได้ เราจะแจ้งใน LINE เมื่อเปิดขาย
       (ไม่มีการชำระเงินในตอนนี้)</p>
+    <div class="card"><div class="body">
+      <strong>ราคา</strong>
+      <ul class="plain">
+        <li><span>ขวด 10 ml · Eau de Parfum</span><span>450 บาท</span></li>
+        <li><span>Sample 5 ml · กลิ่นเดียว</span><span>249 บาท</span></li>
+      </ul>
+      <p class="muted" style="margin:8px 0 0">ซื้อ Sample แล้วกลับมาซื้อขวด 10 ml ภายใน 30 วัน หักคืนค่า Sample 249 บาท จ่ายเพิ่มเพียง 201 บาท</p>
+    </div></div>
+    <div class="card"><div class="body">
+      <strong>เลือกกลิ่นไม่ถูก ดูจากแบบนี้</strong>
+      <ul class="plain">
+        <li><span>ใส่ไปทำงานทุกวัน</span><span>Slow Morning</span></li>
+        <li><span>วันพิเศษ อยากให้คนรอบตัวทัก</span><span>Self Toast</span></li>
+        <li><span>กลิ่นตัวสะอาดแบบเพิ่งอาบน้ำ</span><span>Long Bath</span></li>
+        <li><span>กลิ่นอุ่นๆ กลิ่นไม้ วันอยู่บ้านหรือหน้าฝน</span><span>Stay In</span></li>
+        <li><span>เพิ่งเริ่มใช้น้ำหอม หรือชอบผลไม้เบาๆ</span><span>Tea Break</span></li>
+      </ul>
+    </div></div>
     <div id="products"></div>
   </section>
 

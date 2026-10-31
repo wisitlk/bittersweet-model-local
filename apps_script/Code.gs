@@ -13,13 +13,14 @@ var NOTIFY_EMAIL = '';
 
 var SHEET_NAME = 'CRM';
 var MIN_TOKEN_LENGTH = 32;
-var SEGMENTS = ['', 'booth_smeller', 'set_trier', 'cilantro_lover', 'green_curious', 'gift_seeker', 'repeat_wearer'];
-var BOOLEAN_FIELDS = ['discovery_set_interest', 'preorder_waitlist', 'consent_pdpa', 'handoff', 'delete_request'];
+var SEGMENTS = ['', 'calm_planner', 'social_spark', 'self_care_ritualist', 'cozy_homebody', 'easy_explorer',
+  'booth_smeller', 'sample_trier', 'gift_seeker', 'repeat_wearer'];
+var BOOLEAN_FIELDS = ['sample_interest', 'preorder_waitlist', 'consent_pdpa', 'handoff', 'delete_request'];
 var STRING_FIELDS = ['scents_smelled', 'liked', 'disliked', 'preferences', 'last_message'];
 var MAX_FIELD_LENGTH = 500;
 var COLUMNS = [
   'timestamp', 'line_user_id', 'segment', 'scents_smelled', 'liked', 'disliked', 'preferences',
-  'discovery_set_interest', 'preorder_waitlist', 'consent_pdpa', 'handoff', 'delete_request', 'last_message'
+  'sample_interest', 'preorder_waitlist', 'consent_pdpa', 'handoff', 'delete_request', 'last_message'
 ];
 
 function doPost(e) {

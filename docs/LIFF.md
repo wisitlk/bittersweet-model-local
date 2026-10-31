@@ -54,7 +54,7 @@ cleanup, because they are the record the customer expects to keep.
 
 ## Photos
 
-`public/img/` holds the pictures (`booth.jpg` at the top, one per scent, `scents.jpg` for the discovery set). Replace a
+`public/img/` holds the pictures (`hero.jpg` at the top, one per scent, cropped from product sheet V0.0.6). Replace a
 file with the same name and deploy. Cloudflare serves these files directly; they do not use the Worker's limits.
 
 ## When something goes wrong

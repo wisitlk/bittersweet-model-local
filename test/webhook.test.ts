@@ -19,7 +19,7 @@ describe("parseWebhookBody", () => {
     if (ev?.kind === "text") {
       expect(ev.userId).toBe("U_TEST_DEMO_USER_0001");
       expect(ev.webhookEventId).toBe("01TEST00000000000000000000");
-      expect(ev.text).toContain("Cilantro");
+      expect(ev.text).toContain("Self Toast");
     }
   });
 

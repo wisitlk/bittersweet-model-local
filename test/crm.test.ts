@@ -18,7 +18,7 @@ function resp(over: { handoff?: boolean; crm?: Partial<ConciergeResponse["crm"]>
       liked: "",
       disliked: "",
       preferences: "",
-      discovery_set_interest: false,
+      sample_interest: false,
       preorder_waitlist: false,
       delete_request: false,
       ...over.crm,
@@ -27,12 +27,12 @@ function resp(over: { handoff?: boolean; crm?: Partial<ConciergeResponse["crm"]>
 }
 
 const profile = {
-  segment: "green_curious" as const,
-  scents_smelled: "Cilantro",
-  liked: "Cilantro",
+  segment: "easy_explorer" as const,
+  scents_smelled: "Slow Morning",
+  liked: "Slow Morning",
   disliked: "",
   preferences: "work, fresh",
-  discovery_set_interest: true,
+  sample_interest: true,
 };
 
 describe("buildCrmRow", () => {
@@ -52,9 +52,9 @@ describe("buildCrmRow", () => {
     expect(row).toMatchObject({
       timestamp: "2026-10-08T10:00:00.000Z",
       line_user_id: "U1",
-      segment: "green_curious",
-      scents_smelled: "Cilantro",
-      discovery_set_interest: true,
+      segment: "easy_explorer",
+      scents_smelled: "Slow Morning",
+      sample_interest: true,
       consent_pdpa: true,
       handoff: false,
       last_message: "ok save",
@@ -76,7 +76,7 @@ describe("buildCrmRow", () => {
       liked: "",
       disliked: "",
       preferences: "",
-      discovery_set_interest: false,
+      sample_interest: false,
       preorder_waitlist: false,
     });
   });
@@ -112,7 +112,7 @@ describe("buildCrmRow", () => {
       liked: "",
       disliked: "",
       preferences: "",
-      discovery_set_interest: false,
+      sample_interest: false,
       preorder_waitlist: false,
       consent_pdpa: false,
       handoff: true,

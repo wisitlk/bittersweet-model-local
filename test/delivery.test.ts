@@ -20,7 +20,7 @@ function claudeJson(crm: Record<string, unknown> = {}) {
       liked: "",
       disliked: "",
       preferences: "",
-      discovery_set_interest: false,
+      sample_interest: false,
       preorder_waitlist: false,
       delete_request: false,
       ...crm,

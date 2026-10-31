@@ -29,7 +29,7 @@ function claudeJson(over: Record<string, unknown> = {}, crm: Record<string, unkn
       liked: "",
       disliked: "",
       preferences: "",
-      discovery_set_interest: false,
+      sample_interest: false,
       preorder_waitlist: false,
       delete_request: false,
       ...crm,
@@ -80,7 +80,7 @@ afterEach(() => {
 
 describe("history and input size", () => {
   it("stores only the reply text as the assistant turn, never the CRM JSON", async () => {
-    claudeOutput = claudeJson({ reply: "ตอบแล้ว" }, { save: true, consent_pdpa: true, liked: "Cilantro" });
+    claudeOutput = claudeJson({ reply: "ตอบแล้ว" }, { save: true, consent_pdpa: true, liked: "Slow Morning" });
     const e = env();
     await handleEvent(text("E1"), e, content, NOW);
     const stored = rows(e.DB, "SELECT role, content FROM messages ORDER BY id");
@@ -109,7 +109,7 @@ describe("history and input size", () => {
 
 describe("CRM privacy", () => {
   it("no consent + handoff: the Sheet row has no message text and no profile", async () => {
-    claudeOutput = claudeJson({ handoff: true }, { liked: "Cilantro" });
+    claudeOutput = claudeJson({ handoff: true }, { liked: "Slow Morning" });
     await handleEvent(text("E1", "U1", "ผมแพ้น้ำหอม ผิวขึ้นผื่น"), env(), content, NOW);
     const posted = urls("sheets.example");
     expect(posted).toHaveLength(1);

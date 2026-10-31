@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import worker from "../src/index";
 import { handleEvent } from "../src/handler";
 import { renderApp, waitlistCrmRow } from "../src/liff";
-import { PRODUCTS } from "../src/catalog";
+import { PRODUCTS, SAMPLE_PRICE } from "../src/catalog";
+import knowledge from "../content/knowledge.md";
 import { saveConsent } from "../src/store";
 import { createFakeD1, rows } from "./fakeD1";
 import type { Env } from "../src/types";
@@ -78,7 +79,8 @@ describe("web app page", () => {
     expect(res.headers.get("content-type")).toContain("text/html");
     const html = await res.text();
     expect(html).toContain('"liffId":"2001234567-AbCd"');
-    expect(html).toContain("Fresh Leaf");
+    expect(html).toContain("Slow Morning");
+    expect(html).toContain("Tea Break");
     expect(html).not.toContain("__APP_CONFIG__");
   });
 
@@ -100,11 +102,16 @@ describe("web app page", () => {
 
   it("catalog prices match the knowledge base", () => {
     expect(PRODUCTS.map((p) => [p.name, p.price])).toEqual([
-      ["Fresh Leaf", 450],
-      ["Cilantro", 450],
-      ["Last Sip", 450],
-      ["Discovery set", 350],
+      ["Slow Morning", 450],
+      ["Self Toast", 450],
+      ["Long Bath", 450],
+      ["Stay In", 450],
+      ["Tea Break", 450],
     ]);
+    for (const p of PRODUCTS) expect(knowledge).toContain(p.name);
+    expect(knowledge).toContain("| 450 THB |");
+    expect(knowledge).toContain("| 249 THB |");
+    expect(SAMPLE_PRICE).toBe(249);
   });
 });
 
@@ -157,7 +164,7 @@ describe("POST /api/waitlist", () => {
   it("requires PDPA consent", async () => {
     stubLine();
     const env = makeEnv();
-    const res = await call(env, req("/api/waitlist", "POST", { product: "cilantro" }));
+    const res = await call(env, req("/api/waitlist", "POST", { product: "self_toast" }));
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({ error: "consent_required" });
     expect(rows(env.DB, "SELECT * FROM waitlist")).toEqual([]);
@@ -173,11 +180,11 @@ describe("POST /api/waitlist", () => {
     const fetchMock = stubLine();
     const env = makeEnv();
     for (let i = 0; i < 2; i++) {
-      const res = await call(env, req("/api/waitlist", "POST", { product: "last_sip", consent: true }));
+      const res = await call(env, req("/api/waitlist", "POST", { product: "long_bath", consent: true }));
       expect(res.status).toBe(200);
       const body = (await res.json()) as { points: number; waitlist: string[] };
       expect(body.points).toBe(50); // waitlist 30 + consent 20
-      expect(body.waitlist).toEqual(["last_sip"]);
+      expect(body.waitlist).toEqual(["long_bath"]);
     }
     expect(rows(env.DB, "SELECT given FROM consents")).toEqual([{ given: 1 }]);
     const sheetCalls = fetchMock.mock.calls.filter(([u]) => String(u) === "https://sheet.example/exec");
@@ -190,13 +197,13 @@ describe("POST /api/waitlist", () => {
     stubLine();
     const env = makeEnv();
     await saveConsent(env.DB, USER, 1);
-    expect((await call(env, req("/api/waitlist", "POST", { product: "fresh_leaf" }))).status).toBe(200);
+    expect((await call(env, req("/api/waitlist", "POST", { product: "slow_morning" }))).status).toBe(200);
   });
 
   it("Sheet row carries no message text and a valid segment", () => {
-    const row = waitlistCrmRow(USER, "discovery_set", new Date(0));
-    expect(row.segment).toBe("set_trier");
-    expect(row.discovery_set_interest).toBe(true);
+    const row = waitlistCrmRow(USER, "tea_break", new Date(0));
+    expect(row.segment).toBe("");
+    expect(row.preferences).toBe("web pre-order: Tea Break");
     expect(row.last_message).toBe("");
   });
 });
@@ -205,13 +212,13 @@ describe("deletion request", () => {
   it("also clears points and waitlist", async () => {
     stubLine();
     const env = makeEnv({ LLM_PROVIDER: "gemini", GEMINI_API_KEY: "k" });
-    await call(env, req("/api/waitlist", "POST", { product: "cilantro", consent: true }));
+    await call(env, req("/api/waitlist", "POST", { product: "self_toast", consent: true }));
     const answer = {
       reply: "ลบข้อมูลแล้วครับ",
       handoff: false,
       crm: {
         save: false, segment: "", scents_smelled: "", liked: "", disliked: "", preferences: "",
-        discovery_set_interest: false, preorder_waitlist: false, consent_pdpa: false, delete_request: true,
+        sample_interest: false, preorder_waitlist: false, consent_pdpa: false, delete_request: true,
       },
     };
     vi.stubGlobal(
