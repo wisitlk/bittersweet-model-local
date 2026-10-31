@@ -2,13 +2,13 @@ import { CONSENT_NOTE, isConciergeResponse, RESPONSE_SCHEMA, type ChatMessage, t
 import { errName, isRecord } from "./guards";
 
 /*
- * Local model (Qwen on the owner's Mac mini) through Ollama's native chat API, reached from the Worker over a
- * Cloudflare Tunnel. Ollama is used directly rather than its OpenAI-style endpoint because `think: false` and
+ * Local model (Gemma on the owner's Mac mini) through Ollama's native chat API, reached from the Worker over a
+ * Cloudflare quick tunnel and the gate in mac-mini/gate.mjs. Ollama is used directly rather than its OpenAI-style endpoint because `think: false` and
  * `format: <json schema>` are documented there and both are required: thinking makes replies far too slow, and
  * the schema forces the same JSON shape Claude returns.
  */
 
-export const DEFAULT_LOCAL_MODEL = "qwen3.8:27b";
+export const DEFAULT_LOCAL_MODEL = "gemma4:e4b";
 // waitUntil keeps the Worker alive about 30 s; the LINE reply and CRM post still need a few seconds after this.
 export const DEFAULT_LOCAL_TIMEOUT_MS = 24_000;
 const MAX_LOCAL_TIMEOUT_MS = 25_000;
@@ -17,7 +17,7 @@ export interface LocalConfig {
   baseUrl: string;
   model: string;
   timeoutMs: number;
-  // Cloudflare Access service token in front of the tunnel; both empty only when testing without Access.
+  // The gate's two secrets (sent as CF-Access-Client-Id/Secret); both empty only when calling Ollama directly.
   accessClientId?: string;
   accessClientSecret?: string;
 }

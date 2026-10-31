@@ -1,3 +1,5 @@
+> Superseded by [MAC-MINI.md](MAC-MINI.md) (Gemma in the Ollama app + quick tunnel + gate, Gemini backup). Kept for the Qwen/Access notes.
+
 # Running the bot on a local Qwen model (Mac mini)
 
 This replaces SETUP.md step 5 (Anthropic key). Everything else in SETUP.md stays the same. You don't

@@ -1,10 +1,12 @@
 export interface Env {
   DB: D1Database;
   // vars (wrangler.toml)
-  LLM_PROVIDER?: string; // "gemini", "local" (Qwen via Ollama) or "anthropic" (default when unset)
+  LLM_PROVIDER?: string; // "gemini", "hybrid" (Mac mini first, Gemini backup), "local" or "anthropic" (default)
   GEMINI_MODEL?: string;
   GEMINI_THINKING_LEVEL?: string; // "low" by default; "minimal" where the model supports it
-  LLM_BASE_URL?: string; // tunnel address of the Mac's Ollama, e.g. https://llm.example.com
+  GEMINI_FALLBACK_MODEL?: string; // backup model on overload or timeout; "none" = retry the main model instead
+  GEMINI_FALLBACK_THINKING?: string;
+  LLM_BASE_URL?: string; // tunnel address of the Mac mini's gate, e.g. https://xyz.trycloudflare.com
   LLM_MODEL?: string;
   LLM_TIMEOUT_MS?: string;
   CLAUDE_MODEL?: string;
@@ -18,8 +20,8 @@ export interface Env {
   LINE_CHANNEL_SECRET: string;
   LINE_CHANNEL_ACCESS_TOKEN: string;
   ANTHROPIC_API_KEY?: string; // only needed when LLM_PROVIDER is "anthropic" (or unset)
-  GEMINI_API_KEY?: string; // only needed when LLM_PROVIDER is "gemini"
-  LLM_ACCESS_CLIENT_ID?: string; // Cloudflare Access service token for the tunnel
+  GEMINI_API_KEY?: string; // needed when LLM_PROVIDER is "gemini" or "hybrid"
+  LLM_ACCESS_CLIENT_ID?: string; // shared secret pair the Mac mini gate checks
   LLM_ACCESS_CLIENT_SECRET?: string;
   SHEETS_WEBHOOK_URL?: string;
   SHEETS_TOKEN?: string;

@@ -9,7 +9,7 @@ A Cloudflare Worker that turns a LINE Official Account into "Scent Concierge" fo
 Thai niche perfume brand (a BIS608/BIS609 university project, KMUTT). LINE posts each message to
 `POST /webhook`; the Worker verifies the signature, loads recent history and consent from D1, asks
 the AI model for a structured JSON answer (`LLM_PROVIDER`: `gemini` by default, see `docs/GEMINI.md`;
-`local` = Qwen in Ollama on the owner's Mac mini through a Cloudflare Tunnel, see `docs/LOCAL-LLM.md`;
+`hybrid` = Gemma on the owner's Mac mini first with Gemini as backup, see `docs/MAC-MINI.md`; `local` = the Mac mini only;
 `anthropic` = Claude `claude-sonnet-5-5`), replies through the LINE reply API, and — only
 with PDPA consent — appends a profile row to a Google Sheet through an Apps Script web app. The
 goal is a demo where students scan a QR code and chat with the bot.
@@ -63,6 +63,7 @@ wrong; do not weaken or delete a test to make it pass.
 | `src/liff.ts`, `src/catalog.ts`, `src/loyalty.ts` | LINE web app (`/app`, `/api/me`, `/api/waitlist`): ID-token check, catalog, points, waitlist (see `docs/LIFF.md`) |
 | `web/app.html`, `public/img/` | The web app page (text module) and its photos (static assets) |
 | `schema.sql` | D1 tables |
+| `mac-mini/` | Gate (secret-header lock in front of Ollama), quick-tunnel start script, Worker secret helper |
 | `apps_script/Code.gs` | The Sheet's web app (token check, row validation, delete-by-user, handoff email) |
 | `wrangler.toml` | D1 binding, `[vars]` limits and model id, daily cron |
 
@@ -88,7 +89,7 @@ wrong; do not weaken or delete a test to make it pass.
 - Gemini 3.x/4 cannot turn thinking off (`thinkingLevel` low is the floor on some models, `minimal` on
   others); `maxOutputTokens` includes thinking tokens, so keep it generous. `thinkingBudget` is the
   older 2.5-series field and must not be sent together with `thinkingLevel`.
-- Local model: the Worker has about 30 s per message, so `LLM_TIMEOUT_MS` is capped at 25 s in code.
+- Local model: all model tries share 23 s per message (`MODEL_BUDGET_MS`); in `hybrid` the Mac mini gets at most 12 s.
   Check speed on the Mac with `npm run bench:local` after changing the model. Thinking must stay off.
 - Ollama rejects requests whose Host header is not local; the tunnel's public hostname needs
   HTTP Host Header `localhost:11434`.
