@@ -65,9 +65,11 @@ export const SAMPLE_PRICE = 249;
 
 /** Points awarded once per user for each reason. Shown on the points page. */
 export const POINT_RULES = {
+  register: { points: 50, label: "สมัครสมาชิก" },
   friend: { points: 10, label: "เพิ่ม BitterSweet เป็นเพื่อนใน LINE" },
   consent: { points: 20, label: "ยินยอมให้เก็บโปรไฟล์กลิ่น (PDPA)" },
   waitlist: { points: 30, label: "ลงชื่อ pre-order" },
+  survey: { points: 30, label: "ทำแบบสอบถามกลิ่น" },
 } as const;
 
 export type PointReason = keyof typeof POINT_RULES;

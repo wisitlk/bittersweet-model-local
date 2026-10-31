@@ -51,6 +51,24 @@
   label.consent { display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; font-size: 14px; }
   label.consent input { width: 20px; height: 20px; margin-top: 2px; flex: none; }
   #status { text-align: center; padding: 40px 0; }
+  fieldset { border: 0; padding: 0; margin: 14px 0 0; }
+  legend { font-weight: 600; padding: 0; margin-bottom: 6px; }
+  .choices { display: flex; flex-wrap: wrap; gap: 8px; }
+  .choices label { position: relative; }
+  .choices input { position: absolute; opacity: 0; inset: 0; }
+  .choices span { display: inline-block; padding: 8px 12px; border: 1px solid var(--line); border-radius: 999px;
+    background: var(--bg); font-size: 15px; }
+  .choices input:checked + span { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .choices input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .result-type { font-size: 22px; font-weight: 700; margin: 4px 0 0; }
+  .field { display: block; margin-top: 12px; }
+  .field span { display: block; font-size: 14px; color: var(--muted); margin-bottom: 4px; }
+  .field input { width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg);
+    color: var(--ink); font: inherit; }
+  .field input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .avatar { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; display: block; margin: 0 auto 8px;
+    background: var(--line); }
+  .error { color: #b3261e; font-size: 14px; margin: 8px 0 0; }
 </style>
 </head>
 <body>
@@ -60,6 +78,7 @@
   <img class="hero" src="/img/hero.jpg" alt="น้ำหอม BitterSweet ทั้ง 5 กลิ่น">
 </header>
 <nav class="hidden" id="tabs">
+  <button id="tab-survey" aria-selected="false">แบบสอบถาม</button>
   <button id="tab-shop" aria-selected="true">น้ำหอม</button>
   <button id="tab-points" aria-selected="false">คะแนนสะสม</button>
 </nav>
@@ -97,6 +116,47 @@
     <div id="products"></div>
   </section>
 
+  <section id="register" class="hidden">
+    <form class="card" id="register-form" novalidate><div class="body">
+      <img class="avatar hidden" id="avatar" alt="">
+      <p style="text-align:center;margin:0"><strong>สมัครสมาชิก BitterSweet</strong></p>
+      <p class="muted" style="text-align:center;margin:4px 0 0">กรุณากรอกข้อมูลจริง เพื่อใช้ยืนยันการรับสิทธิพิเศษ (+50 คะแนน)</p>
+      <label class="field"><span>ชื่อ *</span><input id="r-first" autocomplete="given-name" maxlength="60" required></label>
+      <label class="field"><span>นามสกุล *</span><input id="r-last" autocomplete="family-name" maxlength="60" required></label>
+      <label class="field"><span>หมายเลขโทรศัพท์ *</span>
+        <input id="r-phone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="08xxxxxxxx" maxlength="12" required></label>
+      <label class="field"><span>อายุ (ปี) *</span><input id="r-age" type="number" inputmode="numeric" required></label>
+      <label class="consent">
+        <input type="checkbox" id="r-consent">
+        <span>ยอมรับเงื่อนไขและข้อตกลง และยินยอมให้ BitterSweet เก็บชื่อ นามสกุล เบอร์โทร อายุ และ LINE user ID
+          เพื่อดูแลสมาชิก แจ้งข่าวและสิทธิพิเศษ ตาม PDPA ไม่ส่งต่อให้ผู้อื่น ขอลบได้ทุกเมื่อโดยพิมพ์ "ลบข้อมูล" ในแชท</span>
+      </label>
+      <label class="consent hidden" id="r-guardian-row">
+        <input type="checkbox" id="r-guardian">
+        <span>อายุต่ำกว่า 20 ปี: ผู้ปกครองของฉันรับทราบและยินยอมให้เก็บข้อมูลนี้</span>
+      </label>
+      <p class="error hidden" id="r-error"></p>
+      <button class="btn" id="r-submit" type="submit" disabled>ตกลง</button>
+    </div></form>
+  </section>
+
+  <section id="survey" class="hidden">
+    <div class="card hidden" id="survey-result"><div class="body">
+      <div class="muted">บุคลิกกลิ่นของคุณ</div>
+      <div class="result-type" id="result-type"></div>
+      <div class="muted" id="result-label"></div>
+      <p style="margin:10px 0 0">กลิ่นที่น่าจะเข้ากับคุณ: <strong id="result-scent"></strong></p>
+      <p class="muted" style="margin:6px 0 0">ถามต่อในแชท LINE ได้เลย Scent Concierge จะใช้คำตอบนี้ช่วยแนะนำ</p>
+      <button class="btn ghost" id="survey-again">ทำแบบสอบถามใหม่</button>
+    </div></div>
+    <form class="card" id="survey-form"><div class="body">
+      <strong>แบบสอบถามกลิ่น (1 นาที)</strong>
+      <p class="muted" style="margin:4px 0 0">ตอบ 6 ข้อ แล้วเราจะบอกบุคลิกกลิ่นและกลิ่นที่น่าจะเข้ากับคุณ (+30 คะแนน)</p>
+      <div id="questions"></div>
+      <button class="btn" id="survey-submit" type="submit" disabled>ดูผล</button>
+    </div></form>
+  </section>
+
   <section id="points" class="hidden">
     <div class="card"><div class="body">
       <div class="muted">คะแนนของคุณ</div>
@@ -131,11 +191,11 @@
 <script>
 const CONFIG = __APP_CONFIG__;
 const $ = (id) => document.getElementById(id);
-let state = { points: 0, ledger: [], waitlist: [], consent: false };
+let state = { points: 0, ledger: [], waitlist: [], consent: false, survey: null, member: null };
 let pending = null;
 
 function show(...ids) {
-  for (const id of ["status", "login", "shop", "points"]) $(id).classList.toggle("hidden", !ids.includes(id));
+  for (const id of ["status", "login", "register", "survey", "shop", "points"]) $(id).classList.toggle("hidden", !ids.includes(id));
 }
 function fail(text) { $("status").textContent = text; show("status"); }
 const baht = (n) => n.toLocaleString("th-TH") + " บาท";
@@ -215,7 +275,115 @@ function renderPoints() {
   }
 }
 
-function render() { renderProducts(); renderPoints(); }
+function choice(name, value, text) {
+  const label = document.createElement("label");
+  label.innerHTML = '<input type="radio"><span></span>';
+  label.firstChild.name = name;
+  label.firstChild.value = value;
+  label.lastChild.textContent = text;
+  return label;
+}
+
+function buildSurvey() {
+  const box = $("questions");
+  CONFIG.survey.questions.forEach((q, i) => {
+    const fs = document.createElement("fieldset");
+    fs.innerHTML = "<legend></legend><div class='choices'></div>";
+    fs.firstChild.textContent = (i + 1) + ". " + q.text;
+    for (const [code, text] of q.options) fs.lastChild.appendChild(choice(q.id, code, text));
+    box.appendChild(fs);
+  });
+}
+
+function picked(name) {
+  const el = document.querySelector(`input[name="${name}"]:checked`);
+  return el ? el.value : null;
+}
+
+function surveyReady() {
+  $("survey-submit").disabled = !CONFIG.survey.questions.every((q) => picked(q.id));
+}
+
+// Sign-up form. The server checks everything again; this only helps the customer fill it in.
+const PHONE = /^0[2-9]\d{7,8}$/;
+function registerValues() {
+  return {
+    first_name: $("r-first").value.trim(),
+    last_name: $("r-last").value.trim(),
+    phone: $("r-phone").value.replace(/[\s-]/g, "").replace(/^\+66/, "0"),
+    age: Number($("r-age").value),
+  };
+}
+function registerReady() {
+  const v = registerValues();
+  const ageOk = Number.isInteger(v.age) && v.age >= CONFIG.member.minAge && v.age <= CONFIG.member.maxAge;
+  const minor = ageOk && v.age < 20;
+  $("r-guardian-row").classList.toggle("hidden", !minor);
+  $("r-submit").disabled = !(v.first_name && v.last_name && PHONE.test(v.phone) && ageOk && $("r-consent").checked &&
+    (!minor || $("r-guardian").checked));
+}
+const REGISTER_ERRORS = {
+  bad_name: "กรุณากรอกชื่อและนามสกุลเป็นตัวอักษร",
+  bad_phone: "กรุณากรอกเบอร์โทร 10 หลัก เช่น 0812345678",
+  bad_age: "สมัครได้เมื่ออายุ " + CONFIG.member.minAge + " ปีขึ้นไป",
+  guardian_required: "อายุต่ำกว่า 20 ปี ต้องให้ผู้ปกครองยินยอมก่อน",
+  consent_required: "กรุณากดยอมรับเงื่อนไขก่อน",
+};
+$("register-form").oninput = registerReady;
+$("register-form").onchange = registerReady;
+$("register-form").onsubmit = async (e) => {
+  e.preventDefault();
+  const btn = $("r-submit");
+  btn.disabled = true;
+  $("r-error").classList.add("hidden");
+  try {
+    state = await api("/api/register", {
+      method: "POST",
+      body: JSON.stringify({ ...registerValues(), consent: $("r-consent").checked, guardian_consent: $("r-guardian").checked }),
+    });
+    afterLogin();
+  } catch (err) {
+    if (err.message === "login") return;
+    $("r-error").textContent = REGISTER_ERRORS[err.message] || "สมัครไม่สำเร็จ ลองอีกครั้งนะครับ";
+    $("r-error").classList.remove("hidden");
+    btn.disabled = false;
+  }
+};
+
+function renderSurvey() {
+  const s = state.survey;
+  $("survey-result").classList.toggle("hidden", !s);
+  $("survey-form").classList.toggle("hidden", !!s);
+  if (s) {
+    $("result-type").textContent = s.type;
+    $("result-label").textContent = s.label;
+    $("result-scent").textContent = s.scent;
+  }
+  surveyReady();
+}
+
+$("survey-form").onchange = surveyReady;
+$("survey-again").onclick = () => {
+  $("survey-result").classList.add("hidden");
+  $("survey-form").classList.remove("hidden");
+};
+$("survey-form").onsubmit = async (e) => {
+  e.preventDefault();
+  const btn = $("survey-submit");
+  btn.disabled = true;
+  const answers = {};
+  for (const q of CONFIG.survey.questions) answers[q.id] = picked(q.id);
+  try {
+    state = await api("/api/survey", { method: "POST", body: JSON.stringify({ answers }) });
+    render();
+    window.scrollTo(0, 0);
+  } catch (err) {
+    if (err.message !== "login") alert("ส่งแบบสอบถามไม่สำเร็จ ลองอีกครั้งนะครับ");
+    btn.disabled = false;
+  }
+};
+
+function render() { renderSurvey(); renderProducts(); renderPoints(); }
 
 function openConfirm(p) {
   pending = p;
@@ -245,10 +413,10 @@ $("confirm-ok").onclick = async () => {
 };
 
 function selectTab(name) {
-  $("tab-shop").setAttribute("aria-selected", String(name === "shop"));
-  $("tab-points").setAttribute("aria-selected", String(name === "points"));
+  for (const t of ["survey", "shop", "points"]) $("tab-" + t).setAttribute("aria-selected", String(name === t));
   show(name);
 }
+$("tab-survey").onclick = () => selectTab("survey");
 $("tab-shop").onclick = () => selectTab("shop");
 $("tab-points").onclick = () => selectTab("points");
 $("login-btn").onclick = () => liff.login({ redirectUri: location.href });
@@ -266,18 +434,35 @@ async function main() {
   try {
     const profile = await liff.getProfile();
     $("hello").textContent = "สวัสดี " + profile.displayName;
-  } catch { /* the name is only a greeting */ }
+    if (profile.pictureUrl && profile.pictureUrl.startsWith("https://")) {
+      $("avatar").src = profile.pictureUrl;
+      $("avatar").classList.remove("hidden");
+    }
+  } catch { /* the name and photo are only a greeting */ }
   try {
     state = await api("/api/me");
   } catch (e) {
     if (e.message === "login") return;
     return fail(e.message === "rate_limited" ? "ใช้งานถี่เกินไป รอสักครู่แล้วลองใหม่นะครับ" : "โหลดข้อมูลไม่สำเร็จ ลองใหม่อีกครั้งนะครับ");
   }
+  buildSurvey();
+  afterLogin();
+}
+
+// After LINE Login: members see the tabs; everyone else signs up first.
+function afterLogin() {
+  if (!state.member) {
+    $("tabs").classList.add("hidden");
+    registerReady();
+    return show("register");
+  }
+  $("hello").textContent = "สวัสดี คุณ" + state.member.first_name;
   $("tabs").classList.remove("hidden");
   render();
-  // liff.line.me/<id>?tab=points opens the points page (LIFF restores the query after login).
-  const wantPoints = new URLSearchParams(location.search).get("tab") === "points" || location.hash === "#points";
-  selectTab(wantPoints ? "points" : "shop");
+  // liff.line.me/<id>?tab=points|survey|shop opens that page (LIFF restores the query after login).
+  // Without one, a customer who has not answered the survey starts there.
+  const want = new URLSearchParams(location.search).get("tab") || location.hash.slice(1);
+  selectTab(["survey", "shop", "points"].includes(want) ? want : state.survey ? "shop" : "survey");
 }
 main();
 </script>

@@ -4,6 +4,8 @@ import { sendCrmRow, type CrmRow } from "./crm";
 import { errName, isRecord } from "./guards";
 import { awardPoints, joinWaitlist, loadPoints, loadWaitlist } from "./loyalty";
 import { allowWebRequest, hasConsent, saveConsent } from "./store";
+import { isMinor, loadMember, MAX_AGE, MIN_AGE, parseMember, saveMember } from "./member";
+import { loadSurvey, parseSurvey, PERSONALITY, QUESTIONS, saveSurvey, type Survey } from "./survey";
 import type { Env } from "./types";
 
 /*
@@ -11,7 +13,7 @@ import type { Env } from "./types";
  * page (LIFF SDK); every API call carries the LINE ID token, which is checked with LINE before anything is read or
  * written, so nobody can act as another customer. Nothing here sells: no cart, no payment, no address.
  *
- * Subrequests per API call: verify 1 + rate limit 1 + friend check 1 + about 6 D1 queries + Apps Script 2 = 11 < 50.
+ * Subrequests per API call: verify 1 + rate limit 1 + friend check 1 + about 7 D1 queries + Apps Script 2 = 12 < 50.
  */
 
 const VERIFY_URL = "https://api.line.me/oauth2/v2.1/verify";
@@ -67,13 +69,35 @@ export async function isFriend(token: string, userId: string): Promise<boolean> 
 
 /** The page, with the LIFF id and catalog filled in. `<` is escaped so the JSON cannot close the script tag. */
 export function renderApp(liffId: string): string {
-  const config = JSON.stringify({ liffId, products: PRODUCTS, rules: POINT_RULES }).replace(/</g, "\\u003c");
+  const config = JSON.stringify({
+    liffId,
+    products: PRODUCTS,
+    rules: POINT_RULES,
+    survey: { questions: QUESTIONS },
+    member: { minAge: MIN_AGE, maxAge: MAX_AGE },
+  }).replace(/</g, "\\u003c");
   return appHtml.replace("__APP_CONFIG__", config);
 }
 
+/** What the page shows about a saved survey: the type and the scent that goes with it. */
+export function surveyResult(s: Survey | null) {
+  if (!s) return null;
+  const p = PERSONALITY[s.personality];
+  const product = findProduct(p.scent);
+  return { age_group: s.age_group, answers: s.answers, type: p.type, label: p.label, scent: product?.name ?? p.scent };
+}
+
 async function summary(db: D1Database, userId: string) {
-  const [ledger, waitlist] = await Promise.all([loadPoints(db, userId), loadWaitlist(db, userId)]);
+  const [ledger, waitlist, survey, member] = await Promise.all([
+    loadPoints(db, userId),
+    loadWaitlist(db, userId),
+    loadSurvey(db, userId),
+    loadMember(db, userId),
+  ]);
   return {
+    // The page shows the member their own details back (it is their data); first name only in the header.
+    member: member ? { first_name: member.first_name, last_name: member.last_name, phone: member.phone, age: member.age } : null,
+    survey: surveyResult(survey),
     points: ledger.reduce((sum, r) => sum + r.points, 0),
     ledger: ledger.map((r) => ({
       reason: r.reason,
@@ -105,7 +129,42 @@ export function waitlistCrmRow(userId: string, productId: string, now: Date): Cr
   };
 }
 
-/** Handles GET /app, GET /api/me and POST /api/waitlist. Returns null for any other path. */
+/** Sheet row for a survey answered in the web app. Always with consent; answer codes only, no free text. */
+export function surveyCrmRow(userId: string, s: Survey, now: Date): CrmRow {
+  const p = PERSONALITY[s.personality];
+  const a = s.answers;
+  return {
+    timestamp: now.toISOString(),
+    line_user_id: userId,
+    segment: p.segment,
+    scents_smelled: "",
+    liked: "",
+    disliked: "",
+    preferences:
+      `web survey: age ${s.age_group}${s.under_20 ? " (under 20, guardian ok)" : ""}; type ${p.type}; ` +
+      `wear ${a.q1_wear_when}; family ${a.q2_scent_family}; intensity ${a.q3_intensity}; ` +
+      `experience ${a.q5_perfume_experience}; intent ${a.q6_buy_intent}`,
+    sample_interest: a.q6_buy_intent === "sample_first",
+    preorder_waitlist: false,
+    consent_pdpa: true,
+    handoff: false,
+    delete_request: false,
+    last_message: "",
+  };
+}
+
+async function readJson(request: Request): Promise<unknown> {
+  if (Number(request.headers.get("content-length")) > MAX_BODY_BYTES) return "too_large";
+  const raw = await request.text();
+  if (raw.length > MAX_BODY_BYTES) return "too_large";
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return "bad_request";
+  }
+}
+
+/** Handles GET /app, GET /api/me, POST /api/waitlist and POST /api/survey. Returns null for any other path. */
 export async function handleWeb(request: Request, env: Env, ctx: ExecutionContext, now = Date.now()): Promise<Response | null> {
   const { pathname } = new URL(request.url);
 
@@ -122,7 +181,9 @@ export async function handleWeb(request: Request, env: Env, ctx: ExecutionContex
 
   const isMe = pathname === "/api/me" && request.method === "GET";
   const isWaitlist = pathname === "/api/waitlist" && request.method === "POST";
-  if (!isMe && !isWaitlist) return null;
+  const isSurvey = pathname === "/api/survey" && request.method === "POST";
+  const isRegister = pathname === "/api/register" && request.method === "POST";
+  if (!isMe && !isWaitlist && !isSurvey && !isRegister) return null;
 
   if (!env.LINE_LOGIN_CHANNEL_ID) {
     console.error("liff_not_configured");
@@ -150,16 +211,37 @@ export async function handleWeb(request: Request, env: Env, ctx: ExecutionContex
     return json({ ...(await summary(env.DB, userId)), friend, consent });
   }
 
-  // POST /api/waitlist {product, consent}
-  if (Number(request.headers.get("content-length")) > MAX_BODY_BYTES) return json({ error: "too_large" }, 413);
-  const raw = await request.text();
-  if (raw.length > MAX_BODY_BYTES) return json({ error: "too_large" }, 413);
-  let body: unknown;
-  try {
-    body = JSON.parse(raw);
-  } catch {
-    return json({ error: "bad_request" }, 400);
+  const body = await readJson(request);
+  if (body === "too_large") return json({ error: "too_large" }, 413);
+  if (body === "bad_request") return json({ error: "bad_request" }, 400);
+
+  if (isRegister) {
+    // POST /api/register {first_name, last_name, phone, age, consent, guardian_consent}
+    // Personal data: the PDPA box must be ticked on this form itself, every time.
+    if (!isRecord(body) || body.consent !== true) return json({ error: "consent_required" }, 400);
+    const member = parseMember(body);
+    if (typeof member === "string") return json({ error: member }, 400);
+    await Promise.all([
+      saveMember(env.DB, userId, member, now),
+      saveConsent(env.DB, userId, now),
+      awardPoints(env.DB, userId, "register", now),
+      awardPoints(env.DB, userId, "consent", now),
+    ]);
+    return json({ ...(await summary(env.DB, userId)), consent: true, minor: isMinor(member.age) });
   }
+
+  if (isSurvey) {
+    // POST /api/survey {answers}: members only, so consent (and a guardian's under 20) was given at sign-up.
+    const member = await loadMember(env.DB, userId);
+    if (!member) return json({ error: "register_required" }, 400);
+    const survey = parseSurvey(body, member);
+    if (!survey) return json({ error: "bad_request" }, 400);
+    await Promise.all([saveSurvey(env.DB, userId, survey, now), awardPoints(env.DB, userId, "survey", now)]);
+    ctx.waitUntil(sendCrmRow(env.SHEETS_WEBHOOK_URL, env.SHEETS_TOKEN, surveyCrmRow(userId, survey, new Date(now))));
+    return json({ ...(await summary(env.DB, userId)), consent: true });
+  }
+
+  // POST /api/waitlist {product, consent}
   if (!isRecord(body) || !findProduct(body.product)) return json({ error: "unknown_product" }, 400);
   const productId = body.product as string;
   // The waitlist stores who the customer is, so PDPA consent is required: given now, or stored from the chat.

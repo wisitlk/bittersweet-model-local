@@ -18,12 +18,13 @@ import {
   claimEvent,
   deleteConsent,
   deleteHistory,
-  hasConsent,
   loadHistory,
   saveConsent,
   saveTurn,
 } from "./store";
+import { findProduct } from "./catalog";
 import { errName } from "./guards";
+import { loadConsentAndSurvey, PERSONALITY, surveyNote } from "./survey";
 import { truncate } from "./text";
 import type { Env } from "./types";
 import type { LineEvent } from "./webhook";
@@ -40,7 +41,7 @@ export const MAX_USER_TEXT_CHARS = 1000;
  * fetch() calls count (each redirect hop too) and so do D1 queries.
  *
  * Worst case for one text message on the full path:
- *   D1: claim 1 + per-user window 1 + per-user day 1 + global day 1 + history 1 + consent read 1
+ *   D1: claim 1 + per-user window 1 + per-user day 1 + global day 1 + history 1 + consent and survey read 1
  *       + save turn 1 (one two-row INSERT) + consent upsert 1 = 8
  *       (a delete request replaces the save and upsert with 3 deletes: history, consent, and points + waitlist in one batch: 9)
  *   fetch: loading 1 + AI model at most MAX_MODEL_CALLS = 3 + LINE reply 1 + Apps Script 2 (one redirect hop) = 7
@@ -205,8 +206,15 @@ export async function handleEvent(
 
     // The typing animation is cosmetic: start it, but do not make the Claude call wait for it.
     const loading = startLoading(token, ev.userId);
-    const [history, consentStored] = await Promise.all([loadHistory(env.DB, ev.userId), hasConsent(env.DB, ev.userId)]);
-    const resp = await askModel(env, content.systemPrompt, history, userText, consentStored, started + MODEL_BUDGET_MS);
+    const [history, { consent: consentStored, survey }] = await Promise.all([
+      loadHistory(env.DB, ev.userId),
+      loadConsentAndSurvey(env.DB, ev.userId),
+    ]);
+    // The web-app survey (only with consent) tells the model who it is talking to; it goes in front of the
+    // message for the model only and is never stored as the customer's words.
+    const scent = survey ? (findProduct(PERSONALITY[survey.personality].scent)?.name ?? "") : "";
+    const modelText = survey ? `${surveyNote(survey, scent)}\n\n${userText}` : userText;
+    const resp = await askModel(env, content.systemPrompt, history, modelText, consentStored, started + MODEL_BUDGET_MS);
     await loading; // never rejects
     if (!resp) return await say(APOLOGY_REPLY);
 

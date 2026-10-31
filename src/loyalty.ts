@@ -40,10 +40,12 @@ export async function joinWaitlist(db: D1Database, userId: string, product: stri
   return r.meta.changes === 1;
 }
 
-/** Part of a deletion request: points and waitlist go too. One batch, so one subrequest. */
+/** Part of a deletion request: points, waitlist, survey and member details go too. One batch, one subrequest. */
 export async function deleteLoyalty(db: D1Database, userId: string): Promise<void> {
   await db.batch([
     db.prepare("DELETE FROM points WHERE user_id = ?1").bind(userId),
     db.prepare("DELETE FROM waitlist WHERE user_id = ?1").bind(userId),
+    db.prepare("DELETE FROM surveys WHERE user_id = ?1").bind(userId),
+    db.prepare("DELETE FROM members WHERE user_id = ?1").bind(userId),
   ]);
 }
