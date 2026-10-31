@@ -82,7 +82,7 @@ describe("buildLocalRequestBody", () => {
     // Same shape as the cloud models' schema, plus length caps so Gemma cannot run on inside one string.
     expect(Object.keys(LOCAL_RESPONSE_SCHEMA.properties)).toEqual(Object.keys(RESPONSE_SCHEMA.properties));
     expect(LOCAL_RESPONSE_SCHEMA.required).toEqual(RESPONSE_SCHEMA.required);
-    expect(LOCAL_RESPONSE_SCHEMA.properties.reply.maxLength).toBe(600);
+    expect(LOCAL_RESPONSE_SCHEMA.properties.reply.maxLength).toBe(450);
     expect(LOCAL_RESPONSE_SCHEMA.properties.crm.properties.preferences.maxLength).toBe(120);
     expect(LOCAL_RESPONSE_SCHEMA.properties.crm.properties.segment).toBe(RESPONSE_SCHEMA.properties.crm.properties.segment);
     expect(body.think).toBe(false);
