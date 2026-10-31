@@ -1,82 +1,121 @@
 # BitterSweet — knowledge base for the LINE Scent Concierge
 
-Source: BIS608 BitterSweet Project vFinal + BIS609 analysis report. This file is the ONLY source of truth for the agent.
-If a fact is not here, the agent must say it does not know and offer to ask the perfumer.
+Source: product sheet "ข้อมูลสินค้า BitterSweet" V0.0.6 (2026-10-28) + BIS608/BIS609 project. This file is the ONLY
+source of truth for the agent. If a fact is not here, the agent must say it does not know and offer to ask the perfumer.
 
 ## Brand
-- BitterSweet is a Thai niche perfume house. Hand-blended in small batches.
-- Single core material: **tea**. Signature structure: **green → dry tea → light warm finish** ("green-to-warm").
-- Brand line: **"You wear it for you first."** Perfume for the wearer, not for the room.
-- Vision: make young Thais say "I chose green" and be understood.
-- Values: Craftsmanship · Signature discipline (green-to-warm) · Presence · Honesty · Accessibility.
-- Honesty rule: "the brand never promises more than the product can do".
-- Not a gift brand. No gift wrapping. Not competing on price ("we compete on difference, not on price").
-- Channels: Instagram, craft-fair booths (people smell the scents in person), LINE OA.
+- BitterSweet is a small Thai niche perfume house. Brand line: **"You wear it for you first."** Perfume for the wearer.
+- Series: **"กลิ่นเรื่องเล็กๆ ที่ทำให้ตัวเอง"** (small things we do for ourselves). The 5 scents are named after moments
+  we do something for ourselves: a slow morning with tea, a toast to yourself, a long warm bath, cancelling plans to
+  stay in, a midday break with fruit.
+- Every bottle is **Eau de Parfum, 20% perfume oil**; it stays on the skin through the day.
+- Values: honesty ("the brand never promises more than the product can do"), no hard selling.
+- Channels: Instagram, craft-fair booths (people can smell all 5 scents in person), LINE OA.
 
 ## Products and prices
-| Product | Size | Price |
+| Product | What it is | Price |
 |---|---|---|
-| Fresh Leaf | 10 ml bottle | 450 THB |
-| Cilantro | 10 ml bottle | 450 THB |
-| Last Sip | 10 ml bottle | 450 THB |
-| Discovery set (all 3 scents) | 3 × 2 ml | 350 THB — **fully credited (350 THB) when the customer later buys a full bottle**; the voucher works for any scent |
+| Bottle 10 ml | Eau de Parfum, tea-coloured spray bottle, with box and scent-note card | 450 THB |
+| Sample 5 ml | One scent, clear glass spray bottle | 249 THB |
 
-## The three scents
-All three follow the same green-to-warm tea structure.
+- **Sample credit:** buy a Sample 5 ml, then come back and buy a 10 ml bottle **within 30 days** → the 249 THB is
+  credited back, so the bottle costs only **201 THB more**.
+- All 5 scents have the same prices. There is no discovery set in this series.
 
-### Fresh Leaf
-- The freshest, greenest entry point — fresh tea leaf character.
-- Good for: people who like clean, fresh, everyday scents.
-- Exact notes (top / heart / base): NOT AVAILABLE. TODO(owner): add them here once the perfumer confirms (they are not in the BIS608 PDF). Until then say you do not know the exact notes and offer to ask the perfumer.
+## The five scents (No. 01–05)
 
-### Cilantro
-- Distinctly green, herbal, coriander-leaf character. The signature "bold green" of the house.
-- **Polarising: people either love it or hate it.** The agent must say this honestly.
-- Good for: people who love strong green / herbal scents and want something nobody else wears.
-- Not ideal for: people unsure about green scents → suggest trying the discovery set first, or Last Sip.
-- Exact notes (top / heart / base): NOT AVAILABLE. TODO(owner): add them here once the perfumer confirms (they are not in the BIS608 PDF). Until then say you do not know the exact notes and offer to ask the perfumer.
+### No. 01 Slow Morning — "เช้าที่ไม่ต้องรีบไปไหน"
+- Short: green tea, soft, clean (ชาเขียว นุ่ม สะอาด).
+- Smells like: soft matcha green tea, like a warm cup held in both hands, then light clean woods, not sharp.
+- Good for: people who like clean, quiet scents that are not louder than the person next to them; green-tea and
+  morning-café lovers; office workers who want one scent for every day without thinking.
+- When: mornings before leaving home, work days.
 
-### Last Sip
-- Ends with the warmth of tea — like the last sip of a cup. The softest, warmest of the three.
-- **Bridge scent** for people who are curious about green but hesitant.
-- Good for: people who prefer warm, soft, comforting-but-not-sweet scents.
-- Exact notes (top / heart / base): NOT AVAILABLE. TODO(owner): add them here once the perfumer confirms (they are not in the BIS608 PDF). Until then say you do not know the exact notes and offer to ask the perfumer.
+### No. 02 Self Toast — "ชนแก้วให้ตัวเอง ไม่ต้องมีเหตุผล"
+- Short: citrus, white flowers, sparkling (ซิตรัส ดอกไม้ขาว มีประกาย).
+- Smells like: fizzy fresh citrus like opening champagne, then white flowers and rose, finishing with warm amber.
+- Good for: people who like bright, sparkling scents that others around them notice; celebrating yourself on an
+  ordinary day; people who like flowers but not heavy floral scents.
+- When: good-news days, meeting friends, dates, small parties, evening to night.
+
+### No. 03 Long Bath — "น้ำอุ่น ประตูปิด เวลาที่เป็นของเราคนเดียว"
+- Short: soap bubbles, powder, musk (ฟองสบู่ แป้ง มัสก์).
+- Smells like: soap bubbles and soft flowers at first, then soft powder and skin musk, like just out of the shower.
+- Good for: people who like a just-showered clean-skin scent; powder and musk that stays close to the skin, not
+  spreading far; people who wear perfume for themselves more than for others.
+- When: after a bath, before bed, rest days at home.
+
+### No. 04 Stay In — "ยกเลิกนัด แล้วเลือกโซฟา"
+- Short: powder, woods, warm musk (แป้ง ไม้ มัสก์ อุ่นๆ).
+- Smells like: soft powder and faint flowers at first, slowly warming into woods, musk and a little vanilla, like a
+  favourite blanket.
+- Good for: people who like warm, woody scents and dislike fresh sour ones; homebodies who love books, series and
+  blankets; people who want a scent that stays on clothes.
+- When: days at home, air-conditioned rooms, rainy season, evening until bedtime.
+
+### No. 05 Tea Break — "วันหยุดสบายๆ ที่ไม่มีอะไรต้องทำ"
+- Short: pear, green tea, lily (แพร์ ชาเขียว ลิลลี่).
+- Smells like: crisp fresh pear first, then green tea and lily, finishing with musk and light cedarwood.
+- Good for: people who like fresh fruit that is not cloying; people new to perfume who want something easy to wear;
+  café hoppers who like weekends without plans.
+- When: weekends, cafés, afternoons, hot weather when you want something light and fresh.
+
+## Choose by occasion (เลือกกลิ่นไม่ถูก ดูจากแบบนี้)
+| The customer wants | Suggest |
+|---|---|
+| A scent to wear to work every day | Slow Morning |
+| A scent people notice, for special days | Self Toast |
+| A just-showered clean scent | Long Bath |
+| A warm woody scent for days at home or the rainy season | Stay In |
+| New to perfume, or a light fruity scent | Tea Break |
+
+Still unsure: smell all 5 at the booth, take the favourite home as a Sample 5 ml, wear it for two or three days, then
+come back for the 10 ml bottle within 30 days (Sample 249 THB credited).
 
 ## How to try (skin test advice)
-- Try one scent per morning on skin for **3 mornings** (discovery set), notice how it feels on you through the day.
-- Customers with sensitive skin: test on the inner forearm first. Do NOT give medical advice — hand off to the perfumer.
+- Wear the Sample on skin for two or three days and notice how it feels on you through the day.
+- Customers with sensitive skin: test on the inner elbow or forearm first. Do NOT give medical advice — hand off to
+  the perfumer.
 
 ## Status and policies (DEMO STATE)
-- **Not selling yet.** Thai FDA cosmetic notification (เลขจดแจ้ง อย.) is in progress. "Until it is done, we cannot produce, ship or sell."
-  → The agent may only add people to the **pre-order / waitlist** (first sales planned May 2027). No orders, no payments, no delivery promises.
-- Ingredients: full INCI list will be on the label / link (not available in demo) → hand off detailed ingredient questions to the perfumer.
-- Broken bottle in delivery → replaced (future policy).
-- Delivery dates: never promise beyond real hand-blending capacity. Numbered batches.
+- **Not selling yet.** Thai FDA cosmetic notification (เลขจดแจ้ง อย.) is in progress. Until it is done we cannot
+  produce, ship or sell. → The agent may only add people to the **pre-order / waitlist**. No orders, no payments, no
+  addresses, no delivery promises.
+- Ingredients: the full INCI list will be on the label (not available in the demo) → hand off ingredient questions.
+- Delivery dates: never promise any.
 
 ## Who we serve (segments the agent tags in CRM)
 | Tag | Definition | How the agent talks |
 |---|---|---|
+| calm_planner | Likes routine, clean quiet scents, wears perfume to work | Suggest Slow Morning |
+| social_spark | Outgoing, wants a scent for dates and good days | Suggest Self Toast |
+| self_care_ritualist | Wears perfume for themself, after a bath or before bed | Suggest Long Bath |
+| cozy_homebody | Loves staying home, likes warm woody scents | Suggest Stay In |
+| easy_explorer | New to perfume, likes light fruit, cafés, weekends | Suggest Tea Break |
 | booth_smeller | Smelled at a booth, added LINE, not bought | Ask which scent is still on their mind |
-| set_trier | Has / wants the discovery set | Explain 3-morning test, voucher 350 THB |
-| cilantro_lover | Loves strong green | Deeper green story, invite to describe the scent in their own words |
-| green_curious | Interested but unsure about green | Suggest Last Sip as bridge |
-| gift_seeker | Asking for a gift | Honest: not a gift brand, no wrapping; can still buy if they confirm |
-| repeat_wearer | Bought a bottle 60–90 days ago | Refill reminder, referral |
+| sample_trier | Has or wants a Sample 5 ml | Explain the 30-day 249 THB credit |
+| gift_seeker | Asking for a gift | Be honest: perfume is personal; suggest a Sample first |
+| repeat_wearer | Already wears a BitterSweet bottle | Thank them; ask how it wears on them |
 
-Target customer: urban, 24–30, buys perfume for themself, dislikes hard selling, likes brands that speak honestly.
+Customers are mostly 14–40. **Under 20 is a minor:** never push them to buy, never create urgency, and note that a
+parent or guardian must agree before their profile can be saved.
 
 ## Hard rules (ethics + law)
-- Never use wellness / mood claims ("relieves stress", "helps you relax", "boosts mood").
-- Never invent scarcity or urgency. Scarcity only if factual (e.g. "batch #012 has 40 bottles") — in the demo there is NO such data, so never mention stock numbers.
-- Never use fear / insecurity ("people will notice you smell bad").
-- Never invent prices, discounts, notes, ingredients or dates.
-- Anchoring allowed only with real prices: "set 350 THB, credited back on a 450 THB bottle".
-- PDPA: ask consent before saving the customer's scent profile; delete on request.
-- Always disclose being an AI assistant; always offer a human (the perfumer) on request or for skin/allergy/ingredient questions (reply within 24 h).
+- Never use wellness / mood claims ("relieves stress", "helps you relax", "makes you calm", "boosts mood"). Describe
+  what the scent smells like and when people wear it, not what it does to feelings.
+- Never invent scarcity or urgency, stock numbers, prices, discounts, notes, ingredients or dates.
+- Never use fear or insecurity.
+- Anchoring only with real prices: "Sample 249 THB, credited back on a 450 THB bottle within 30 days".
+- PDPA: ask consent before saving the customer's scent profile; delete on request. Under 20: guardian consent too.
+- Always disclose being an AI assistant; always offer a human (the perfumer) on request or for skin, allergy or
+  ingredient questions (reply within 24 h).
 
 ## FAQ
-- **Is it unisex?** Yes, all three scents are unisex.
+- **Is it unisex?** Yes, all five scents are unisex.
+- **How long does it last?** Eau de Parfum with 20% perfume oil; it stays on the skin through the day (how long
+  exactly depends on skin).
 - **Can I smell it somewhere?** At BitterSweet booths at craft fairs (dates announced on Instagram / LINE).
 - **Can I buy now?** Not yet — we are waiting for the Thai FDA notification. I can add you to the pre-order list.
-- **Gift wrapping?** No — we make perfume "you wear for you first". You can still buy a bottle or a discovery set.
-- **Why only 3 scents?** One material (tea), one structure, done carefully — craft over catalogue size.
+- **Is there a discovery set?** Not in this series. Try one scent as a Sample 5 ml (249 THB), credited back on a
+  10 ml bottle within 30 days.
+- **Gift?** Perfume is personal; a Sample lets the person choose their own scent first.

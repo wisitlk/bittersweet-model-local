@@ -7,7 +7,7 @@
         "type": "text",
         "id": "468789577898262530",
         "quoteToken": "test-quote-token",
-        "text": "สวัสดีครับ เมื่อวานไปดมที่บูธ ชอบ Cilantro แต่กลัวมันเขียวเกินไปถ้าใส่ไปทำงานทุกวัน"
+        "text": "สวัสดีครับ เมื่อวานไปดมที่บูธ ชอบ Self Toast แต่กลัวมันแรงเกินไปถ้าใส่ไปทำงานทุกวัน"
       },
       "webhookEventId": "01TEST00000000000000000000",
       "deliveryContext": { "isRedelivery": false },

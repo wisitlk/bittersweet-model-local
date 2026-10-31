@@ -85,13 +85,14 @@ open item matters more with a local model.
 6. Docs: a "Local model" section in `SETUP.md` (install Ollama, pull model, cloudflared, Access
    token, secrets).
 
-## Open choice: fallback to Claude
+## Decision: local only (2026-10-11)
 
-- **Local only**: no Anthropic account needed. If the Mac is off, asleep or too slow, students get
-  the fixed apology message.
-- **Local first, Claude as backup** (recommended for a live demo): same as above, but on failure
-  the Worker asks Claude once. Needs the Anthropic key with its spending limit; costs only when the
-  Mac fails.
+No Claude backup. If the Mac is off, asleep or too slow, students get the fixed apology message, and no
+Anthropic account is needed. Claude stays available by setting `LLM_PROVIDER = "anthropic"`.
+
+As built, the Worker calls Ollama's native `/api/chat` (with `think: false` and `format` set to the
+schema) rather than the OpenAI-style endpoint, because those two options are documented there. The
+step-by-step setup is in `docs/LOCAL-LLM.md`.
 
 ## Not changed
 

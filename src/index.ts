@@ -3,6 +3,7 @@ import knowledge from "../content/knowledge.md";
 import promptTemplate from "../content/system_prompt.md";
 import { buildSystemPrompt } from "./claude";
 import { handleEvent, planEvents, type Content } from "./handler";
+import { handleWeb } from "./liff";
 import { cleanup } from "./store";
 import { verifySignature } from "./signature";
 import type { Env } from "./types";
@@ -14,7 +15,11 @@ const content: Content = { systemPrompt: buildSystemPrompt(promptTemplate, knowl
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
-    if (request.method !== "POST" || url.pathname !== "/webhook") {
+    if (url.pathname !== "/webhook") {
+      // The LINE web app (LIFF) and its API; everything else is 404.
+      return (await handleWeb(request, env, ctx)) ?? new Response("Not found", { status: 404 });
+    }
+    if (request.method !== "POST") {
       return new Response("Not found", { status: 404 });
     }
 

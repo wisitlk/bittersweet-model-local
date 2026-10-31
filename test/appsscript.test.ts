@@ -11,7 +11,7 @@ const U2 = "U" + "2".repeat(32);
 const U9 = "U" + "9".repeat(32);
 const HEADER = [
   "timestamp", "line_user_id", "segment", "scents_smelled", "liked", "disliked", "preferences",
-  "discovery_set_interest", "preorder_waitlist", "consent_pdpa", "handoff", "delete_request", "last_message",
+  "sample_interest", "preorder_waitlist", "consent_pdpa", "handoff", "delete_request", "last_message",
 ];
 
 type Row = unknown[];
@@ -68,12 +68,12 @@ const row = (over: Record<string, unknown> = {}) => ({
   token: GOOD_TOKEN,
   timestamp: "2026-10-08T10:00:00.000Z",
   line_user_id: U1,
-  segment: "green_curious",
-  scents_smelled: "Cilantro",
-  liked: "Cilantro",
+  segment: "easy_explorer",
+  scents_smelled: "Slow Morning",
+  liked: "Slow Morning",
   disliked: "",
   preferences: "work",
-  discovery_set_interest: true,
+  sample_interest: true,
   preorder_waitlist: false,
   consent_pdpa: true,
   handoff: false,
@@ -126,8 +126,8 @@ describe("Code.gs writes", () => {
 describe("Code.gs delete_request", () => {
   const existing: Row[] = [
     HEADER,
-    ["t", U1, "green_curious"],
-    ["t", U2, "set_trier"],
+    ["t", U1, "easy_explorer"],
+    ["t", U2, "sample_trier"],
     ["t", U1, "booth_smeller"],
   ];
 
@@ -194,7 +194,7 @@ describe("Code.gs row validation", () => {
   });
 
   it("rejects booleans that are not booleans", () => {
-    for (const f of ["discovery_set_interest", "preorder_waitlist", "consent_pdpa", "handoff", "delete_request"]) {
+    for (const f of ["sample_interest", "preorder_waitlist", "consent_pdpa", "handoff", "delete_request"]) {
       for (const bad of ["true", 1, null, undefined]) {
         const r = rejected({ [f]: bad });
         expect(r.res.ok).toBe(false);

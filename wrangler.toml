@@ -5,26 +5,53 @@ compatibility_date = "2026-10-01"
 # Load the content files as plain text strings (imported in src/index.ts).
 [[rules]]
 type = "Text"
-globs = ["**/*.md", "**/*.txt"]
+globs = ["**/*.md", "**/*.txt", "**/*.html"]
 fallthrough = true
 
+# Images for the web app (public/img/...). Cloudflare serves these files directly, free, before the Worker runs.
+[assets]
+directory = "public"
+
 # D1 database (see SETUP.md, step "Create the database").
-# Run `npx wrangler d1 create bittersweet-concierge`, then paste the database_id it prints below.
+# The owner's existing database bitter_sweet (an id is not a secret). New owners: `npx wrangler d1 create <name>`.
 [[d1_databases]]
 binding = "DB"
-database_name = "bittersweet-concierge"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_name = "bitter_sweet"
+database_id = "e334bf7d-58ed-4e1d-901d-c1e278fac321"
 
 # Daily cleanup of data older than 7 days (03:17 UTC), see scheduled() in src/index.ts.
 [triggers]
 crons = ["17 3 * * *"]
 
 [vars]
+# AI model: "gemini" = Google Gemini API (docs/GEMINI.md); "hybrid" = Gemma on the Mac mini first, Gemini when the
+# Mac mini is off or slow (docs/MAC-MINI.md); "local" = the Mac mini only; "anthropic" = Claude.
+LLM_PROVIDER = "gemini"
+GEMINI_MODEL = "gemini-3.6-flash"     # tested live 2026-10-27; 3.8-flash at "low" took over 20 s
+GEMINI_THINKING_LEVEL = "minimal"   # 3.6-flash supports minimal; 3.8-flash does not (HTTP 400)
+# Backup when the main model is overloaded (503) or slow; "none" = retry the main model instead.
+GEMINI_FALLBACK_MODEL = "gemini-3.1-flash-lite"
+GEMINI_FALLBACK_THINKING = "low"
+# Only used when LLM_PROVIDER is "hybrid" or "local".
+LLM_BASE_URL = ""                          # the trycloudflare.com address printed by mac-mini/start.sh
+LLM_MODEL = "gemma4:e4b"                   # the exact tag shown by `ollama list` on the Mac mini
+LLM_TIMEOUT_MS = "9000"                    # hybrid caps the Mac mini at 9 s so Gemini keeps time
+# Only used when LLM_PROVIDER is "anthropic".
 CLAUDE_MODEL = "claude-sonnet-5-5"
 USER_MSG_LIMIT = "20"          # messages per user ...
 USER_WINDOW_SECONDS = "600"    # ... per this many seconds
 USER_DAILY_LIMIT = "60"        # messages per user per UTC day
 DAILY_CLAUDE_CAP = "1500"      # max Claude calls per UTC day, all users together
 
+# LINE web app (docs/LIFF.md). Neither is a secret. Empty = the web app answers 503 and the chat bot is unaffected.
+LIFF_ID = "2012248666-XEfSJJcL"                 # from LINE Developers -> LINE Login channel -> LIFF tab, e.g. 2001234567-AbCdEfGh
+LINE_LOGIN_CHANNEL_ID = "2012248666"   # the LINE Login channel's Channel ID (Basic settings), e.g. 2001234567
+# Selling (docs/LIFF.md). Leave empty until the Thai FDA notification exists: the buy flow is then a demo.
+FDA_NOTIFICATION_NO = ""
+PROMPTPAY_ID = ""
+
 # Secrets (set with `npx wrangler secret put <NAME>`, never written here):
-#   LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN, ANTHROPIC_API_KEY, SHEETS_WEBHOOK_URL, SHEETS_TOKEN
+#   LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN, SHEETS_WEBHOOK_URL, SHEETS_TOKEN,
+#   GEMINI_API_KEY if LLM_PROVIDER is "gemini" or "hybrid"
+#   LLM_ACCESS_CLIENT_ID, LLM_ACCESS_CLIENT_SECRET if "hybrid" or "local" (sh mac-mini/set-worker-secrets.sh)
+#   ANTHROPIC_API_KEY only if LLM_PROVIDER is "anthropic"

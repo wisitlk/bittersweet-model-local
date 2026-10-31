@@ -5,10 +5,13 @@ const API_URL = "https://api.anthropic.com/v1/messages";
 export const CLAUDE_TIMEOUT_MS = 20_000;
 const SEGMENTS = [
   "",
+  "calm_planner",
+  "social_spark",
+  "self_care_ritualist",
+  "cozy_homebody",
+  "easy_explorer",
   "booth_smeller",
-  "set_trier",
-  "cilantro_lover",
-  "green_curious",
+  "sample_trier",
   "gift_seeker",
   "repeat_wearer",
 ] as const;
@@ -21,7 +24,7 @@ export interface CrmFields {
   liked: string;
   disliked: string;
   preferences: string;
-  discovery_set_interest: boolean;
+  sample_interest: boolean;
   preorder_waitlist: boolean;
   delete_request: boolean;
 }
@@ -51,7 +54,7 @@ export const RESPONSE_SCHEMA = {
         liked: str,
         disliked: str,
         preferences: str,
-        discovery_set_interest: bool,
+        sample_interest: bool,
         preorder_waitlist: bool,
         delete_request: bool,
       },
@@ -63,7 +66,7 @@ export const RESPONSE_SCHEMA = {
         "liked",
         "disliked",
         "preferences",
-        "discovery_set_interest",
+        "sample_interest",
         "preorder_waitlist",
         "delete_request",
       ],
@@ -87,7 +90,7 @@ export function isConciergeResponse(v: unknown): v is ConciergeResponse {
     typeof c.liked === "string" &&
     typeof c.disliked === "string" &&
     typeof c.preferences === "string" &&
-    typeof c.discovery_set_interest === "boolean" &&
+    typeof c.sample_interest === "boolean" &&
     typeof c.preorder_waitlist === "boolean" &&
     typeof c.delete_request === "boolean"
   );
