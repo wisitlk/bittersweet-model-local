@@ -4,6 +4,7 @@ import { sendCrmRow, type CrmRow } from "./crm";
 import { errName, isRecord } from "./guards";
 import { awardPoints, joinWaitlist, loadPoints, loadWaitlist } from "./loyalty";
 import { allowWebRequest, hasConsent, saveConsent } from "./store";
+import { orderRef, parseOrder, promptPayPayload, salesOpen, saveOrder, VARIANTS } from "./checkout";
 import { isMinor, loadMember, MAX_AGE, MIN_AGE, parseMember, saveMember } from "./member";
 import { loadSurvey, parseSurvey, PERSONALITY, QUESTIONS, saveSurvey, type Survey } from "./survey";
 import type { Env } from "./types";
@@ -68,9 +69,11 @@ export async function isFriend(token: string, userId: string): Promise<boolean> 
 }
 
 /** The page, with the LIFF id and catalog filled in. `<` is escaped so the JSON cannot close the script tag. */
-export function renderApp(liffId: string): string {
+export function renderApp(liffId: string, sales = false): string {
   const config = JSON.stringify({
     liffId,
+    sales,
+    variants: VARIANTS,
     products: PRODUCTS,
     rules: POINT_RULES,
     survey: { questions: QUESTIONS },
@@ -170,7 +173,7 @@ export async function handleWeb(request: Request, env: Env, ctx: ExecutionContex
 
   if ((pathname === "/app" || pathname === "/app/") && request.method === "GET") {
     if (!env.LIFF_ID) return new Response("Web app not configured (LIFF_ID)", { status: 503 });
-    return new Response(renderApp(env.LIFF_ID), {
+    return new Response(renderApp(env.LIFF_ID, salesOpen(env)), {
       headers: {
         "Content-Type": "text/html; charset=utf-8",
         "X-Content-Type-Options": "nosniff",
@@ -183,7 +186,8 @@ export async function handleWeb(request: Request, env: Env, ctx: ExecutionContex
   const isWaitlist = pathname === "/api/waitlist" && request.method === "POST";
   const isSurvey = pathname === "/api/survey" && request.method === "POST";
   const isRegister = pathname === "/api/register" && request.method === "POST";
-  if (!isMe && !isWaitlist && !isSurvey && !isRegister) return null;
+  const isCheckout = pathname === "/api/checkout" && request.method === "POST";
+  if (!isMe && !isWaitlist && !isSurvey && !isRegister && !isCheckout) return null;
 
   if (!env.LINE_LOGIN_CHANNEL_ID) {
     console.error("liff_not_configured");
@@ -228,6 +232,28 @@ export async function handleWeb(request: Request, env: Env, ctx: ExecutionContex
       awardPoints(env.DB, userId, "consent", now),
     ]);
     return json({ ...(await summary(env.DB, userId)), consent: true, minor: isMinor(member.age) });
+  }
+
+  if (isCheckout) {
+    // POST /api/checkout {lines: [{product, variant, qty}], shipping: {name, phone, address, postcode}}
+    const order = parseOrder(body);
+    if (typeof order === "string") return json({ error: order }, 400);
+    if (!salesOpen(env)) {
+      // Demo until the FDA notification exists: same answer shape, but nothing is stored and no QR is made.
+      return json({ demo: true, ref: "DEMO", total: order.total, lines: order.lines });
+    }
+    if (!(await loadMember(env.DB, userId))) return json({ error: "register_required" }, 400);
+    const ref = orderRef();
+    await saveOrder(env.DB, ref, userId, order, now);
+    console.error("order_created"); // event name only: no order details in logs
+    return json({
+      demo: false,
+      ref,
+      total: order.total,
+      lines: order.lines,
+      promptpay: promptPayPayload(env.PROMPTPAY_ID ?? "", order.total),
+      fda: env.FDA_NOTIFICATION_NO,
+    });
   }
 
   if (isSurvey) {

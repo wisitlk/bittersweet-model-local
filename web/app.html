@@ -93,8 +93,8 @@
   </section>
 
   <section id="shop" class="hidden">
-    <p class="notice">ตอนนี้ยังไม่เปิดขาย เพราะรอเลขจดแจ้ง อย. อยู่ ลงชื่อ pre-order ไว้ได้ เราจะแจ้งใน LINE เมื่อเปิดขาย
-      (ไม่มีการชำระเงินในตอนนี้)</p>
+    <p class="notice" id="sales-notice">ตอนนี้ยังไม่เปิดขาย เพราะรอเลขจดแจ้ง อย. อยู่ ปุ่ม "ซื้อ" เป็นเดโมให้ลองดูขั้นตอน
+      ไม่มีการเก็บเงินและไม่บันทึกที่อยู่ ลงชื่อ pre-order ไว้ได้ เราจะแจ้งใน LINE เมื่อเปิดขาย</p>
     <div class="card"><div class="body">
       <strong>ราคา</strong>
       <ul class="plain">
@@ -175,6 +175,41 @@
   </section>
 </main>
 
+<dialog id="buy">
+  <form id="buy-form" novalidate>
+    <div id="buy-step1">
+      <strong id="buy-title"></strong>
+      <div class="choices" style="margin-top:10px" id="buy-variants"></div>
+      <label class="field"><span>จำนวน</span><input id="buy-qty" type="number" inputmode="numeric" min="1" value="1"></label>
+      <p style="margin:10px 0 0">รวม <strong id="buy-total"></strong> <span class="muted">(ยังไม่รวมค่าส่ง แจ้งในแชทก่อนโอน)</span></p>
+      <button class="btn" type="button" id="buy-next">ต่อไป: ที่อยู่จัดส่ง</button>
+    </div>
+    <div id="buy-step2" class="hidden">
+      <strong>ที่อยู่จัดส่ง</strong>
+      <label class="field"><span>ชื่อผู้รับ *</span><input id="s-name" autocomplete="name" maxlength="120"></label>
+      <label class="field"><span>เบอร์โทร *</span><input id="s-phone" type="tel" inputmode="numeric" maxlength="12"></label>
+      <label class="field"><span>ที่อยู่ *</span><input id="s-address" autocomplete="street-address" maxlength="300"
+        placeholder="บ้านเลขที่ ถนน ตำบล อำเภอ จังหวัด"></label>
+      <label class="field"><span>รหัสไปรษณีย์ *</span><input id="s-postcode" inputmode="numeric" maxlength="5"></label>
+      <p class="error hidden" id="buy-error"></p>
+      <button class="btn" type="submit" id="buy-pay">ไปหน้าชำระเงิน</button>
+    </div>
+    <div id="buy-step3" class="hidden">
+      <strong>ชำระเงินด้วย PromptPay</strong>
+      <p style="margin:6px 0 0">เลขที่คำสั่งซื้อ <strong id="pay-ref"></strong> · ยอด <strong id="pay-total"></strong></p>
+      <div id="pay-demo" class="notice" style="margin-top:10px">โหมดเดโม: ยังไม่เปิดขายเพราะรอเลขจดแจ้ง อย.
+        จึงไม่มี QR ให้โอน ไม่มีการเก็บเงิน และไม่ได้บันทึกที่อยู่ เมื่อเปิดขายจริง หน้านี้จะแสดง QR PromptPay
+        ให้สแกนจ่าย แล้วส่งสลิปในแชท LINE</div>
+      <div id="pay-real" class="hidden">
+        <div id="pay-qr" style="display:flex;justify-content:center;margin-top:10px"></div>
+        <p class="muted" style="margin:6px 0 0">สแกนด้วยแอปธนาคาร แล้วส่งสลิปพร้อมเลขที่คำสั่งซื้อในแชท LINE
+          ร้านจะยืนยันและแจ้งค่าส่งก่อนจัดส่ง · เลขจดแจ้ง อย. <span id="pay-fda"></span></p>
+      </div>
+    </div>
+    <button class="btn ghost" type="button" id="buy-close">ปิด</button>
+  </form>
+</dialog>
+
 <dialog id="confirm">
   <strong id="confirm-title"></strong>
   <p class="muted" style="margin:6px 0 0">ลงชื่อรับแจ้งเมื่อเปิดขาย ยังไม่มีการสั่งซื้อหรือชำระเงิน</p>
@@ -238,9 +273,16 @@ function renderProducts() {
     card.querySelector(".size").textContent = p.size;
     card.querySelector(".blurb").textContent = p.blurb;
     const btn = card.querySelector("button");
-    btn.textContent = joined ? "ลงชื่อ pre-order แล้ว ✓" : "ลงชื่อ pre-order";
-    btn.disabled = joined;
-    btn.onclick = () => openConfirm(p);
+    btn.textContent = CONFIG.sales ? "ซื้อ" : "ซื้อ (เดโม)";
+    btn.onclick = () => openBuy(p);
+    if (!CONFIG.sales) {
+      const pre = document.createElement("button");
+      pre.className = "btn ghost";
+      pre.textContent = joined ? "ลงชื่อ pre-order แล้ว ✓" : "ลงชื่อ pre-order";
+      pre.disabled = joined;
+      pre.onclick = () => openConfirm(p);
+      btn.after(pre);
+    }
     box.appendChild(card);
   }
 }
@@ -411,6 +453,86 @@ $("confirm-ok").onclick = async () => {
     btn.disabled = false;
   }
 };
+
+// Buy flow. Prices on the page are a preview; the server computes the total from the catalog.
+let buying = null;
+function buyTotal() {
+  const v = picked("variant");
+  const qty = Math.max(1, Math.min(5, Math.floor(Number($("buy-qty").value) || 1)));
+  return v ? CONFIG.variants[v].price * qty : 0;
+}
+function buyStep(n) { for (const i of [1, 2, 3]) $("buy-step" + i).classList.toggle("hidden", i !== n); }
+function openBuy(p) {
+  buying = p;
+  $("buy-title").textContent = p.name;
+  const box = $("buy-variants");
+  box.textContent = "";
+  for (const [id, v] of Object.entries(CONFIG.variants)) box.appendChild(choice("variant", id, v.label + " · " + baht(v.price)));
+  box.querySelector("input").checked = true;
+  $("buy-qty").value = 1;
+  $("buy-total").textContent = baht(buyTotal());
+  if (state.member) {
+    $("s-name").value = state.member.first_name + " " + state.member.last_name;
+    $("s-phone").value = state.member.phone;
+  }
+  $("buy-error").classList.add("hidden");
+  buyStep(1);
+  $("buy").showModal();
+}
+$("buy-form").oninput = () => { $("buy-total").textContent = baht(buyTotal()); };
+$("buy-next").onclick = () => buyStep(2);
+$("buy-close").onclick = () => $("buy").close();
+$("buy-form").onsubmit = async (e) => {
+  e.preventDefault();
+  const btn = $("buy-pay");
+  btn.disabled = true;
+  $("buy-error").classList.add("hidden");
+  try {
+    const qty = Math.max(1, Math.min(5, Math.floor(Number($("buy-qty").value) || 1)));
+    const res = await api("/api/checkout", {
+      method: "POST",
+      body: JSON.stringify({
+        lines: [{ product: buying.id, variant: picked("variant"), qty }],
+        shipping: {
+          name: $("s-name").value, phone: $("s-phone").value,
+          address: $("s-address").value, postcode: $("s-postcode").value,
+        },
+      }),
+    });
+    $("pay-ref").textContent = res.ref;
+    $("pay-total").textContent = baht(res.total);
+    $("pay-demo").classList.toggle("hidden", !res.demo);
+    $("pay-real").classList.toggle("hidden", res.demo);
+    if (!res.demo) {
+      $("pay-fda").textContent = res.fda;
+      await showQr(res.promptpay);
+    }
+    buyStep(3);
+  } catch (err) {
+    if (err.message === "login") return;
+    $("buy-error").textContent = err.message === "bad_shipping"
+      ? "กรุณากรอกชื่อ เบอร์โทร 10 หลัก ที่อยู่ และรหัสไปรษณีย์ 5 หลัก" : "ทำรายการไม่สำเร็จ ลองอีกครั้งนะครับ";
+    $("buy-error").classList.remove("hidden");
+  } finally {
+    btn.disabled = false;
+  }
+};
+// The QR library is only loaded when sales are open, so the demo never draws a payable code.
+async function showQr(payload) {
+  if (!window.qrcode) {
+    await new Promise((ok, fail) => {
+      const s = document.createElement("script");
+      s.src = "https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js";
+      s.onload = ok;
+      s.onerror = fail;
+      document.head.appendChild(s);
+    });
+  }
+  const qr = window.qrcode(0, "M");
+  qr.addData(payload);
+  qr.make();
+  $("pay-qr").innerHTML = qr.createSvgTag({ cellSize: 5, margin: 4 });
+}
 
 function selectTab(name) {
   for (const t of ["survey", "shop", "points"]) $("tab-" + t).setAttribute("aria-selected", String(name === t));

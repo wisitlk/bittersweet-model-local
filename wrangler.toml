@@ -46,6 +46,9 @@ DAILY_CLAUDE_CAP = "1500"      # max Claude calls per UTC day, all users togethe
 # LINE web app (docs/LIFF.md). Neither is a secret. Empty = the web app answers 503 and the chat bot is unaffected.
 LIFF_ID = "2012248666-XEfSJJcL"                 # from LINE Developers -> LINE Login channel -> LIFF tab, e.g. 2001234567-AbCdEfGh
 LINE_LOGIN_CHANNEL_ID = "2012248666"   # the LINE Login channel's Channel ID (Basic settings), e.g. 2001234567
+# Selling (docs/LIFF.md). Leave empty until the Thai FDA notification exists: the buy flow is then a demo.
+FDA_NOTIFICATION_NO = ""
+PROMPTPAY_ID = ""
 
 # Secrets (set with `npx wrangler secret put <NAME>`, never written here):
 #   LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN, SHEETS_WEBHOOK_URL, SHEETS_TOKEN,

@@ -69,3 +69,19 @@ file with the same name and deploy. Cloudflare serves these files directly; they
 | page "เปิดหน้าเว็บไม่สำเร็จ" | LIFF ID wrong, or endpoint URL does not match | steps 4 and 6 |
 | `D1_ERROR: no such table: points` | step 1 not done | step 1 |
 | no friend points | the customer has not added the bot, or step 3's link is missing | add the bot as a friend, reopen the page |
+
+## Sign-up, survey and checkout (2026-10-31)
+
+- **Sign-up** (`/api/register`, `src/member.ts`): after LINE Login a new customer gives first name, last name,
+  phone and age, ticks the PDPA box (and a guardian box under 20). +50 points. Stored in D1 `members` only;
+  never logged or sent to the Sheet.
+- **Survey** (`/api/survey`, `src/survey.ts`): 6 questions from `scent-concierge/sample-data/SURVEY.md`, members
+  only. Shows the personality type and its scent (+30 points), sends answer codes (no names) to the Sheet, and the
+  chat bot gets a short note about it before each message.
+- **Checkout** (`/api/checkout`, `src/checkout.ts`): product -> Bottle or Sample and quantity -> shipping address ->
+  PromptPay page. **Demo until the Thai FDA notification exists**: nothing is stored and no QR is drawn.
+  To open sales later: set `FDA_NOTIFICATION_NO` and `PROMPTPAY_ID` in `wrangler.toml` `[vars]`, update
+  `content/knowledge.md` and `content/system_prompt.md` (they say "not selling"), and deploy. Orders then land in
+  D1 `orders` with status `awaiting_payment`; staff check the slip in the LINE chat and update the status.
+  A buyer's deletion request goes to staff (paid orders may have to be kept for tax).
+- New tables for an existing database: `npx wrangler d1 execute bitter_sweet --remote --file migrations/0002_surveys_members.sql`.

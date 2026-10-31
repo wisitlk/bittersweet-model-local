@@ -1,4 +1,4 @@
--- Adds the survey and member tables to an existing database (safe to run twice):
+-- Adds the survey, member and order tables to an existing database (safe to run twice):
 --   npx wrangler d1 execute bitter_sweet --remote --file migrations/0002_surveys_members.sql
 
 -- Scent survey from the web app (src/survey.ts), members only (consent given at sign-up).
@@ -25,3 +25,19 @@ CREATE TABLE IF NOT EXISTS members (
   created_at        INTEGER NOT NULL,
   updated_at        INTEGER NOT NULL
 );
+
+-- Orders from the web app (src/checkout.ts). Only written once sales are open (FDA_NOTIFICATION_NO and PROMPTPAY_ID
+-- set); until then the checkout is a demo and this table stays empty. Holds a shipping address: personal data.
+CREATE TABLE IF NOT EXISTS orders (
+  ref            TEXT PRIMARY KEY,   -- BS-XXXXXX, shown to the customer
+  user_id        TEXT NOT NULL,
+  lines          TEXT NOT NULL,      -- JSON [{product, variant, qty}]
+  total          INTEGER NOT NULL,   -- THB, products only
+  ship_name      TEXT NOT NULL,
+  ship_phone     TEXT NOT NULL,
+  ship_address   TEXT NOT NULL,
+  ship_postcode  TEXT NOT NULL,
+  status         TEXT NOT NULL,      -- awaiting_payment | paid | shipped | cancelled (staff update it)
+  created_at     INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_orders_user ON orders (user_id);

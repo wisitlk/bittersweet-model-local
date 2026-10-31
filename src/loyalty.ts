@@ -47,5 +47,7 @@ export async function deleteLoyalty(db: D1Database, userId: string): Promise<voi
     db.prepare("DELETE FROM waitlist WHERE user_id = ?1").bind(userId),
     db.prepare("DELETE FROM surveys WHERE user_id = ?1").bind(userId),
     db.prepare("DELETE FROM members WHERE user_id = ?1").bind(userId),
+    // Orders are kept while sales are off (the table is empty); once selling, tax law may require keeping
+    // paid orders, so a deletion request for a buyer is handed to staff instead (see docs/LIFF.md).
   ]);
 }

@@ -15,6 +15,8 @@ export interface Env {
   USER_DAILY_LIMIT?: string;
   DAILY_CLAUDE_CAP?: string;
   LIFF_ID?: string; // LINE web app id (not a secret)
+  FDA_NOTIFICATION_NO?: string; // Thai FDA cosmetic notification; with PROMPTPAY_ID set, the web app sells (src/checkout.ts)
+  PROMPTPAY_ID?: string; // shop PromptPay phone or tax id for the payment QR
   LINE_LOGIN_CHANNEL_ID?: string; // LINE Login channel that owns the LIFF app; ID tokens are checked against it
   // secrets
   LINE_CHANNEL_SECRET: string;

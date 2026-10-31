@@ -61,6 +61,7 @@ wrong; do not weaken or delete a test to make it pass.
 | `src/messages.ts` | Fixed Thai replies (busy, limit reached, apology, non-text) |
 | `content/` | `knowledge.md`, `system_prompt.md`, `greeting_th.txt` — bundled as text modules |
 | `src/liff.ts`, `src/catalog.ts`, `src/loyalty.ts` | LINE web app (`/app`, `/api/me`, `/api/waitlist`): ID-token check, catalog, points, waitlist (see `docs/LIFF.md`) |
+| `src/member.ts`, `src/survey.ts`, `src/checkout.ts` | Web app sign-up, scent survey, and the buy flow (demo until `FDA_NOTIFICATION_NO` + `PROMPTPAY_ID` are set) |
 | `web/app.html`, `public/img/` | The web app page (text module) and its photos (static assets) |
 | `schema.sql` | D1 tables |
 | `mac-mini/` | Gate (secret-header lock in front of Ollama), quick-tunnel start script, Worker secret helper |
@@ -70,7 +71,8 @@ wrong; do not weaken or delete a test to make it pass.
 ## Rules that must hold
 
 - **The bot never sells.** No orders, payments or addresses until the Thai FDA notification exists.
-  It recommends, suggests the discovery set, and adds people to the pre-order waitlist. These rules
+  It recommends, suggests a Sample, and adds people to the pre-order waitlist. The web app's buy flow stays a demo
+  (stores nothing, no payment QR) until `FDA_NOTIFICATION_NO` and `PROMPTPAY_ID` are both set. These rules
   are in `content/system_prompt.md`; keep them when editing the prompt.
 - **No profile data in the Sheet without consent.** Without `consent_pdpa`, only flags go out for
   handoff or deletion — never message text or profile fields. A deletion request clears D1 history,
