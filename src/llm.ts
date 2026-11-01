@@ -44,14 +44,15 @@ export interface LocalConfig {
   // The gate's two secrets (sent as CF-Access-Client-Id/Secret); both empty only when calling Ollama directly.
   accessClientId?: string;
   accessClientSecret?: string;
-  // false = experiment: send no `format` grammar and ask for the JSON in words instead (LOCAL_JSON_HINT).
+  // true = send Ollama's `format` grammar; false (the Worker's default) = ask for the JSON in words (LOCAL_JSON_HINT).
   useFormat?: boolean;
 }
 
 /**
- * Experiment (2026-11-01): with the grammar on, Gemma's runaways are whitespace with no closing brace, which looks like
- * the grammar forbidding the token it wants (for example a ``` fence) so it keeps picking a newline. Without `format`
- * readJsonStream still finds the object, even inside a fence, and isConciergeResponse checks its shape.
+ * Measured 2026-11-01 on the Mac mini: with the grammar on, about half of Gemma's replies stalled right after the
+ * "segment" field and wrote whitespace until num_predict ran out; without it 15 of 15 were valid (1.6-3.0 s direct,
+ * 4.3-6.6 s through the tunnel). So the Worker asks for the JSON in words, readJsonStream finds the object (even in a
+ * ``` fence) and isConciergeResponse checks its shape; a malformed reply falls back to Gemini as before.
  */
 export const LOCAL_JSON_HINT =
   "Answer with one JSON object only, no code fence, exactly these keys: " +
@@ -67,7 +68,7 @@ export function buildLocalRequestBody(
   history: ChatMessage[],
   userText: string,
   consentGiven = false,
-  useFormat = true,
+  useFormat = false,
 ) {
   return {
     model,
@@ -76,8 +77,8 @@ export function buildLocalRequestBody(
       { role: "system", content: system },
       ...history,
       { role: "user", content: userText },
-      ...(consentGiven ? [{ role: "system", content: CONSENT_NOTE }] : []),
       ...(useFormat ? [] : [{ role: "system", content: LOCAL_JSON_HINT }]),
+      ...(consentGiven ? [{ role: "system", content: CONSENT_NOTE }] : []),
     ],
     // Streamed so askLocal can stop as soon as the JSON object closes (see readJsonStream).
     stream: true,
@@ -185,7 +186,7 @@ export async function askLocal(
     const res = await fetch(`${cfg.baseUrl.replace(/\/+$/, "")}/api/chat`, {
       method: "POST",
       headers,
-      body: JSON.stringify(buildLocalRequestBody(cfg.model, system, history, userText, consentGiven, cfg.useFormat !== false)),
+      body: JSON.stringify(buildLocalRequestBody(cfg.model, system, history, userText, consentGiven, cfg.useFormat === true)),
       signal: AbortSignal.timeout(cfg.timeoutMs),
     });
     if (!res.ok) {

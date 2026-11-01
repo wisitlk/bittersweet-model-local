@@ -94,6 +94,8 @@ wrong; do not weaken or delete a test to make it pass.
   others); `maxOutputTokens` includes thinking tokens, so keep it generous. `thinkingBudget` is the
   older 2.5-series field and must not be sent together with `thinkingLevel`.
 - Local model: all model tries share 23 s per message (`MODEL_BUDGET_MS`); in `hybrid` the Mac mini gets at most 9 s.
+  Gemma 4 with Ollama's `format` grammar stalls on whitespace in about half of replies, so the JSON is asked for in
+  words (`LOCAL_JSON_HINT`) and read from the stream; keep `LLM_FORMAT` off unless a new model is benchmarked with it.
   Check speed on the Mac with `npm run bench:local` after changing the model. Thinking must stay off.
 - Ollama rejects requests whose Host header is not local; the tunnel's public hostname needs
   HTTP Host Header `localhost:11434`.

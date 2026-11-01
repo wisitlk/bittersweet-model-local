@@ -9,6 +9,7 @@ export interface Env {
   LLM_BASE_URL?: string; // tunnel address of the Mac mini's gate, e.g. https://xyz.trycloudflare.com
   LLM_MODEL?: string;
   LLM_TIMEOUT_MS?: string;
+  LLM_FORMAT?: string; // "on" sends Ollama's JSON grammar again; anything else asks for the JSON in words
   CLAUDE_MODEL?: string;
   USER_MSG_LIMIT?: string;
   USER_WINDOW_SECONDS?: string;

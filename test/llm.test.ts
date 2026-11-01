@@ -83,8 +83,8 @@ afterEach(() => {
 });
 
 describe("buildLocalRequestBody", () => {
-  it("forces the response schema, turns thinking off and streams", () => {
-    const body = buildLocalRequestBody("qwen3.8:27b", "SYS", [], "hi");
+  it("with LLM_FORMAT=on forces the response schema, turns thinking off and streams", () => {
+    const body = buildLocalRequestBody("qwen3.8:27b", "SYS", [], "hi", false, true);
     expect(body.model).toBe("qwen3.8:27b");
     expect(body.format).toBe(LOCAL_RESPONSE_SCHEMA);
     // Same shape as the cloud models' schema, plus length caps so Gemma cannot run on inside one string.
@@ -101,8 +101,9 @@ describe("buildLocalRequestBody", () => {
     ]);
   });
 
-  it("can leave the grammar out and ask for the JSON in words instead", () => {
-    const body = buildLocalRequestBody("m", "SYS", [], "hi", false, false);
+  it("by default leaves the grammar out and asks for the JSON in words instead", () => {
+    const body = buildLocalRequestBody("m", "SYS", [], "hi");
+    expect(body.stream).toBe(true);
     expect(body).not.toHaveProperty("format");
     expect(body.messages.at(-1)).toEqual({ role: "system", content: LOCAL_JSON_HINT });
   });
@@ -190,7 +191,7 @@ describe("askLocal", () => {
 
   it("finds the object inside a code fence", async () => {
     stub(ollama("```json\n" + JSON.stringify(valid) + "\n```"));
-    expect(await askLocal({ ...cfg, useFormat: false }, "s", [], "hi")).toEqual(valid);
+    expect(await askLocal(cfg, "s", [], "hi")).toEqual(valid);
   });
 
   it("keeps normal spacing and newlines inside the JSON", async () => {

@@ -8,7 +8,7 @@
  *     then npm run bench:gemini; optional GEMINI_MODEL, GEMINI_THINKING_LEVEL
  *   Add --raw (local only) to also print Ollama's done_reason, token counts and, when Gemma does not stop by itself,
  *     the end of the text it wrote (askLocal stops reading at the closing brace; --raw reads to the end).
- *   LLM_FORMAT=off npm run bench:local tries Gemma without Ollama's JSON grammar (the JSON is asked for in words).
+ *   LLM_FORMAT=on npm run bench:local sends Ollama's JSON grammar too (off by default, as in the Worker).
  * Prints only timings and the bot's replies; nothing is sent to LINE or the Sheet.
  */
 import { readFileSync } from "node:fs";
@@ -48,7 +48,7 @@ const cfg = {
   timeoutMs: 120_000, // measure the real time here; the Worker itself stops at LLM_TIMEOUT_MS
   accessClientId: process.env.GATE_CLIENT_ID,
   accessClientSecret: process.env.GATE_CLIENT_SECRET,
-  useFormat: process.env.LLM_FORMAT !== "off", // LLM_FORMAT=off tries the reply without Ollama's JSON grammar
+  useFormat: process.env.LLM_FORMAT === "on", // LLM_FORMAT=on sends Ollama's JSON grammar, like the Worker's LLM_FORMAT
 };
 // Gemini aborts at its own 20 s timeout inside askGemini. In "hybrid" the Worker gives the Mac mini at most
 // HYBRID_LOCAL_MAX_MS before it asks Gemini instead.
@@ -59,7 +59,7 @@ const ask = (text: string) =>
 console.log(
   useGemini
     ? `Gemini ${geminiModel} (thinking ${thinking}); Worker budget ${budgetMs / 1000} s per reply\n`
-    : `model ${cfg.model} at ${cfg.baseUrl}${cfg.useFormat ? "" : " (no JSON grammar)"}; Worker budget ${budgetMs / 1000} s per reply\n`,
+    : `model ${cfg.model} at ${cfg.baseUrl}${cfg.useFormat ? " (JSON grammar on)" : ""}; Worker budget ${budgetMs / 1000} s per reply\n`,
 );
 // Same request as askLocal, but keeps Ollama's own fields so a "length" stop can be inspected.
 async function rawLocal(text: string): Promise<void> {

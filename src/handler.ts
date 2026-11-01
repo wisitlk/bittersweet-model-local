@@ -123,6 +123,7 @@ function localConfig(env: Env, baseUrl: string, timeoutMs: number) {
     timeoutMs,
     accessClientId: env.LLM_ACCESS_CLIENT_ID,
     accessClientSecret: env.LLM_ACCESS_CLIENT_SECRET,
+    useFormat: env.LLM_FORMAT === "on",
   };
 }
 
