@@ -44,7 +44,22 @@ export interface LocalConfig {
   // The gate's two secrets (sent as CF-Access-Client-Id/Secret); both empty only when calling Ollama directly.
   accessClientId?: string;
   accessClientSecret?: string;
+  // false = experiment: send no `format` grammar and ask for the JSON in words instead (LOCAL_JSON_HINT).
+  useFormat?: boolean;
 }
+
+/**
+ * Experiment (2026-11-01): with the grammar on, Gemma's runaways are whitespace with no closing brace, which looks like
+ * the grammar forbidding the token it wants (for example a ``` fence) so it keeps picking a newline. Without `format`
+ * readJsonStream still finds the object, even inside a fence, and isConciergeResponse checks its shape.
+ */
+export const LOCAL_JSON_HINT =
+  "Answer with one JSON object only, no code fence, exactly these keys: " +
+  '{"reply": string (max 450 characters), "handoff": boolean, "crm": {"save": boolean, "consent_pdpa": boolean, ' +
+  '"segment": one of ' +
+  JSON.stringify(RESPONSE_SCHEMA.properties.crm.properties.segment.enum) +
+  ', "scents_smelled": string, "liked": string, "disliked": string, "preferences": string, ' +
+  '"sample_interest": boolean, "preorder_waitlist": boolean, "delete_request": boolean}}';
 
 export function buildLocalRequestBody(
   model: string,
@@ -52,6 +67,7 @@ export function buildLocalRequestBody(
   history: ChatMessage[],
   userText: string,
   consentGiven = false,
+  useFormat = true,
 ) {
   return {
     model,
@@ -61,11 +77,12 @@ export function buildLocalRequestBody(
       ...history,
       { role: "user", content: userText },
       ...(consentGiven ? [{ role: "system", content: CONSENT_NOTE }] : []),
+      ...(useFormat ? [] : [{ role: "system", content: LOCAL_JSON_HINT }]),
     ],
     // Streamed so askLocal can stop as soon as the JSON object closes (see readJsonStream).
     stream: true,
     think: false,
-    format: LOCAL_RESPONSE_SCHEMA,
+    ...(useFormat ? { format: LOCAL_RESPONSE_SCHEMA } : {}),
     // Keep the model loaded between students so nobody waits for it to load from disk.
     keep_alive: -1,
     // A good reply is ~200 tokens of JSON; the maxLength limits above keep the longest valid one well under 800.
@@ -166,7 +183,7 @@ export async function askLocal(
     const res = await fetch(`${cfg.baseUrl.replace(/\/+$/, "")}/api/chat`, {
       method: "POST",
       headers,
-      body: JSON.stringify(buildLocalRequestBody(cfg.model, system, history, userText, consentGiven)),
+      body: JSON.stringify(buildLocalRequestBody(cfg.model, system, history, userText, consentGiven, cfg.useFormat !== false)),
       signal: AbortSignal.timeout(cfg.timeoutMs),
     });
     if (!res.ok) {

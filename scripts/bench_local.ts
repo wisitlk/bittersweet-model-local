@@ -8,6 +8,7 @@
  *     then npm run bench:gemini; optional GEMINI_MODEL, GEMINI_THINKING_LEVEL
  *   Add --raw (local only) to also print Ollama's done_reason, token counts and, when Gemma does not stop by itself,
  *     the end of the text it wrote (askLocal stops reading at the closing brace; --raw reads to the end).
+ *   LLM_FORMAT=off npm run bench:local tries Gemma without Ollama's JSON grammar (the JSON is asked for in words).
  * Prints only timings and the bot's replies; nothing is sent to LINE or the Sheet.
  */
 import { readFileSync } from "node:fs";
@@ -47,6 +48,7 @@ const cfg = {
   timeoutMs: 120_000, // measure the real time here; the Worker itself stops at LLM_TIMEOUT_MS
   accessClientId: process.env.GATE_CLIENT_ID,
   accessClientSecret: process.env.GATE_CLIENT_SECRET,
+  useFormat: process.env.LLM_FORMAT !== "off", // LLM_FORMAT=off tries the reply without Ollama's JSON grammar
 };
 // Gemini aborts at its own 20 s timeout inside askGemini. In "hybrid" the Worker gives the Mac mini at most
 // HYBRID_LOCAL_MAX_MS before it asks Gemini instead.
@@ -57,7 +59,7 @@ const ask = (text: string) =>
 console.log(
   useGemini
     ? `Gemini ${geminiModel} (thinking ${thinking}); Worker budget ${budgetMs / 1000} s per reply\n`
-    : `model ${cfg.model} at ${cfg.baseUrl}; Worker budget ${budgetMs / 1000} s per reply\n`,
+    : `model ${cfg.model} at ${cfg.baseUrl}${cfg.useFormat ? "" : " (no JSON grammar)"}; Worker budget ${budgetMs / 1000} s per reply\n`,
 );
 // Same request as askLocal, but keeps Ollama's own fields so a "length" stop can be inspected.
 async function rawLocal(text: string): Promise<void> {
@@ -69,7 +71,7 @@ async function rawLocal(text: string): Promise<void> {
   const res = await fetch(`${cfg.baseUrl.replace(/\/+$/, "")}/api/chat`, {
     method: "POST",
     headers,
-    body: JSON.stringify(buildLocalRequestBody(cfg.model, system, [], text)),
+    body: JSON.stringify(buildLocalRequestBody(cfg.model, system, [], text, false, cfg.useFormat)),
     signal: AbortSignal.timeout(cfg.timeoutMs),
   });
   // The request streams (NDJSON); read it all, without askLocal's early stop, to see what Gemma would write.
@@ -93,7 +95,10 @@ async function rawLocal(text: string): Promise<void> {
     `        raw: done_reason=${data.done_reason} prompt_tokens=${data.prompt_eval_count} ` +
       `output_tokens=${data.eval_count} (${tps} tok/s) chars=${content.length}`,
   );
-  if (data.done_reason !== "stop") console.log(`        last 400 chars: ${JSON.stringify(content.slice(-400))}`);
+  if (data.done_reason !== "stop") {
+    console.log(`        first 300 chars: ${JSON.stringify(content.slice(0, 300))}`);
+    console.log(`        last 200 chars: ${JSON.stringify(content.slice(-200))}`);
+  }
   else console.log(`        json: ${content}`);
   console.log("");
 }

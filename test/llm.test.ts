@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CONSENT_NOTE, RESPONSE_SCHEMA } from "../src/claude";
-import { LOCAL_RESPONSE_SCHEMA, MAX_WHITESPACE_RUN } from "../src/llm";
+import { LOCAL_JSON_HINT, LOCAL_RESPONSE_SCHEMA, MAX_WHITESPACE_RUN } from "../src/llm";
 import { handleEvent, type Content } from "../src/handler";
 import {
   askLocal,
@@ -101,6 +101,12 @@ describe("buildLocalRequestBody", () => {
     ]);
   });
 
+  it("can leave the grammar out and ask for the JSON in words instead", () => {
+    const body = buildLocalRequestBody("m", "SYS", [], "hi", false, false);
+    expect(body).not.toHaveProperty("format");
+    expect(body.messages.at(-1)).toEqual({ role: "system", content: LOCAL_JSON_HINT });
+  });
+
   it("keeps the system prompt first and adds the consent note after the user turn", () => {
     const history = [
       { role: "user" as const, content: "a" },
@@ -180,6 +186,11 @@ describe("askLocal", () => {
     stub(ollama('{"reply": "x",' + " ".repeat(MAX_WHITESPACE_RUN + 1) + '"handoff": false}'));
     expect(await askLocal(cfg, "s", [], "hi")).toBeNull();
     expect(console.error).toHaveBeenCalledWith("local_stream_stopped", "whitespace_run");
+  });
+
+  it("finds the object inside a code fence", async () => {
+    stub(ollama("```json\n" + JSON.stringify(valid) + "\n```"));
+    expect(await askLocal({ ...cfg, useFormat: false }, "s", [], "hi")).toEqual(valid);
   });
 
   it("keeps normal spacing and newlines inside the JSON", async () => {
