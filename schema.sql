@@ -82,12 +82,15 @@ CREATE TABLE IF NOT EXISTS orders (
   ref            TEXT PRIMARY KEY,   -- BS-XXXXXX, shown to the customer
   user_id        TEXT NOT NULL,
   lines          TEXT NOT NULL,      -- JSON [{product, variant, qty}]
-  total          INTEGER NOT NULL,   -- THB, products only
+  total          INTEGER NOT NULL,   -- THB the customer pays for products (subtotal - discount)
   ship_name      TEXT NOT NULL,
   ship_phone     TEXT NOT NULL,
   ship_address   TEXT NOT NULL,
   ship_postcode  TEXT NOT NULL,
   status         TEXT NOT NULL,      -- awaiting_payment | paid | shipped | cancelled (staff update it)
-  created_at     INTEGER NOT NULL
+  created_at     INTEGER NOT NULL,
+  subtotal       INTEGER NOT NULL DEFAULT 0,  -- THB before the points discount (migrations/0003)
+  discount       INTEGER NOT NULL DEFAULT 0,  -- THB taken off by a points redemption
+  points_used    INTEGER NOT NULL DEFAULT 0   -- points spent (ledger row 'redeem:<ref>'; back if cancelled)
 );
 CREATE INDEX IF NOT EXISTS idx_orders_user ON orders (user_id);

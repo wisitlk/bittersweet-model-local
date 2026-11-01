@@ -161,7 +161,7 @@
     <div class="card"><div class="body">
       <div class="muted">คะแนนของคุณ</div>
       <div class="total" id="total">0</div>
-      <div class="muted">กติกาการใช้คะแนนจะประกาศเมื่อเปิดขาย</div>
+      <div class="muted" id="redeem-info"></div>
     </div></div>
     <div class="card"><div class="body">
       <strong>วิธีสะสมคะแนน</strong>
@@ -181,7 +181,10 @@
       <strong id="buy-title"></strong>
       <div class="choices" style="margin-top:10px" id="buy-variants"></div>
       <label class="field"><span>จำนวน</span><input id="buy-qty" type="number" inputmode="numeric" min="1" value="1"></label>
-      <p style="margin:10px 0 0">รวม <strong id="buy-total"></strong> <span class="muted">(ยังไม่รวมค่าส่ง แจ้งในแชทก่อนโอน)</span></p>
+      <div class="field"><span>ใช้คะแนนแลกส่วนลด (คุณมี <span id="buy-points">0</span> คะแนน)</span>
+        <div class="choices" id="buy-redeem"></div></div>
+      <p style="margin:10px 0 0" id="buy-discount-row" class="hidden">ส่วนลด <strong id="buy-discount"></strong></p>
+      <p style="margin:6px 0 0">รวม <strong id="buy-total"></strong> <span class="muted">(ยังไม่รวมค่าส่ง แจ้งในแชทก่อนโอน)</span></p>
       <button class="btn" type="button" id="buy-next">ต่อไป: ที่อยู่จัดส่ง</button>
     </div>
     <div id="buy-step2" class="hidden">
@@ -191,12 +194,14 @@
       <label class="field"><span>ที่อยู่ *</span><input id="s-address" autocomplete="street-address" maxlength="300"
         placeholder="บ้านเลขที่ ถนน ตำบล อำเภอ จังหวัด"></label>
       <label class="field"><span>รหัสไปรษณีย์ *</span><input id="s-postcode" inputmode="numeric" maxlength="5"></label>
+      <p class="muted" style="margin:8px 0 0">ที่อยู่ใช้เพื่อจัดส่งและติดต่อเรื่องคำสั่งซื้อนี้เท่านั้น ไม่ส่งต่อให้ผู้อื่น นอกจากบริษัทขนส่ง</p>
       <p class="error hidden" id="buy-error"></p>
       <button class="btn" type="submit" id="buy-pay">ไปหน้าชำระเงิน</button>
     </div>
     <div id="buy-step3" class="hidden">
       <strong>ชำระเงินด้วย PromptPay</strong>
-      <p style="margin:6px 0 0">เลขที่คำสั่งซื้อ <strong id="pay-ref"></strong> · ยอด <strong id="pay-total"></strong></p>
+      <p style="margin:6px 0 0">เลขที่คำสั่งซื้อ <strong id="pay-ref"></strong> · ยอด <strong id="pay-total"></strong>
+        <span class="muted" id="pay-discount"></span></p>
       <div id="pay-demo" class="notice" style="margin-top:10px">โหมดเดโม: ยังไม่เปิดขายเพราะรอเลขจดแจ้ง อย.
         จึงไม่มี QR ให้โอน ไม่มีการเก็บเงิน และไม่ได้บันทึกที่อยู่ เมื่อเปิดขายจริง หน้านี้จะแสดง QR PromptPay
         ให้สแกนจ่าย แล้วส่งสลิปในแชท LINE</div>
@@ -226,6 +231,7 @@
 <script>
 const CONFIG = __APP_CONFIG__;
 const $ = (id) => document.getElementById(id);
+$("sales-notice").classList.toggle("hidden", CONFIG.sales); // the demo notice only while not selling
 let state = { points: 0, ledger: [], waitlist: [], consent: false, survey: null, member: null };
 let pending = null;
 
@@ -289,9 +295,13 @@ function renderProducts() {
 
 function renderPoints() {
   $("total").textContent = state.points;
+  $("redeem-info").textContent = "แลกส่วนลดตอนซื้อ: " +
+    Object.values(CONFIG.redeem).map((r) => r.label).join(" · ") +
+    " (ครั้งละ 1 สิทธิ์ต่อคำสั่งซื้อ) · ซื้อสินค้าได้ 1 คะแนนทุก " + CONFIG.bahtPerPoint + " บาท เมื่อร้านยืนยันการชำระ";
   const rules = $("rules");
   rules.textContent = "";
   for (const [reason, r] of Object.entries(CONFIG.rules)) {
+    if (CONFIG.sales && reason === "waitlist") continue; // no pre-order once selling
     const li = document.createElement("li");
     const got = state.ledger.some((x) => x.reason === reason);
     li.innerHTML = "<span></span><span></span>";
@@ -312,7 +322,7 @@ function renderPoints() {
     const li = document.createElement("li");
     li.innerHTML = "<span></span><span></span>";
     li.children[0].textContent = x.label + " · " + new Date(x.created_at).toLocaleDateString("th-TH");
-    li.children[1].textContent = "+" + x.points;
+    li.children[1].textContent = (x.points > 0 ? "+" : "") + x.points;
     ledger.appendChild(li);
   }
 }
@@ -456,10 +466,20 @@ $("confirm-ok").onclick = async () => {
 
 // Buy flow. Prices on the page are a preview; the server computes the total from the catalog.
 let buying = null;
-function buyTotal() {
+// Mirrors parseOrder in src/checkout.ts; the server's numbers are the ones that count.
+function buyPrice() {
   const v = picked("variant");
   const qty = Math.max(1, Math.min(5, Math.floor(Number($("buy-qty").value) || 1)));
-  return v ? CONFIG.variants[v].price * qty : 0;
+  const subtotal = v ? CONFIG.variants[v].price * qty : 0;
+  const r = CONFIG.redeem[picked("redeem")];
+  const discount = r ? Math.round((subtotal * r.percent) / 100) : 0;
+  return { subtotal, discount, total: subtotal - discount };
+}
+function showBuyPrice() {
+  const p = buyPrice();
+  $("buy-total").textContent = baht(p.total);
+  $("buy-discount").textContent = "-" + baht(p.discount);
+  $("buy-discount-row").classList.toggle("hidden", !p.discount);
 }
 function buyStep(n) { for (const i of [1, 2, 3]) $("buy-step" + i).classList.toggle("hidden", i !== n); }
 function openBuy(p) {
@@ -469,8 +489,18 @@ function openBuy(p) {
   box.textContent = "";
   for (const [id, v] of Object.entries(CONFIG.variants)) box.appendChild(choice("variant", id, v.label + " · " + baht(v.price)));
   box.querySelector("input").checked = true;
+  const redeem = $("buy-redeem");
+  redeem.textContent = "";
+  redeem.appendChild(choice("redeem", "", "ไม่ใช้คะแนน"));
+  for (const [id, r] of Object.entries(CONFIG.redeem)) {
+    const c = choice("redeem", id, r.label);
+    if (state.points < r.points) { c.firstChild.disabled = true; c.classList.add("muted"); }
+    redeem.appendChild(c);
+  }
+  redeem.querySelector("input").checked = true;
+  $("buy-points").textContent = state.points;
   $("buy-qty").value = 1;
-  $("buy-total").textContent = baht(buyTotal());
+  showBuyPrice();
   if (state.member) {
     $("s-name").value = state.member.first_name + " " + state.member.last_name;
     $("s-phone").value = state.member.phone;
@@ -479,7 +509,7 @@ function openBuy(p) {
   buyStep(1);
   $("buy").showModal();
 }
-$("buy-form").oninput = () => { $("buy-total").textContent = baht(buyTotal()); };
+$("buy-form").oninput = showBuyPrice;
 $("buy-next").onclick = () => buyStep(2);
 $("buy-close").onclick = () => $("buy").close();
 $("buy-form").onsubmit = async (e) => {
@@ -493,6 +523,7 @@ $("buy-form").onsubmit = async (e) => {
       method: "POST",
       body: JSON.stringify({
         lines: [{ product: buying.id, variant: picked("variant"), qty }],
+        redeem: picked("redeem") || null,
         shipping: {
           name: $("s-name").value, phone: $("s-phone").value,
           address: $("s-address").value, postcode: $("s-postcode").value,
@@ -501,6 +532,12 @@ $("buy-form").onsubmit = async (e) => {
     });
     $("pay-ref").textContent = res.ref;
     $("pay-total").textContent = baht(res.total);
+    $("pay-discount").textContent = res.discount ? "(ลด " + baht(res.discount) + " จากคะแนน)" : "";
+    if (!res.demo) {
+      // The answer carries the new points balance: the redeemed points are already spent.
+      state = { ...state, points: res.points, ledger: res.ledger };
+      renderPoints();
+    }
     $("pay-demo").classList.toggle("hidden", !res.demo);
     $("pay-real").classList.toggle("hidden", res.demo);
     if (!res.demo) {
@@ -511,7 +548,9 @@ $("buy-form").onsubmit = async (e) => {
   } catch (err) {
     if (err.message === "login") return;
     $("buy-error").textContent = err.message === "bad_shipping"
-      ? "กรุณากรอกชื่อ เบอร์โทร 10 หลัก ที่อยู่ และรหัสไปรษณีย์ 5 หลัก" : "ทำรายการไม่สำเร็จ ลองอีกครั้งนะครับ";
+      ? "กรุณากรอกชื่อ เบอร์โทร 10 หลัก ที่อยู่ และรหัสไปรษณีย์ 5 หลัก"
+      : err.message === "not_enough_points" ? "คะแนนไม่พอสำหรับส่วนลดนี้ กลับไปเลือกใหม่ได้"
+      : err.message === "register_required" ? "กรุณาสมัครสมาชิกก่อนสั่งซื้อ" : "ทำรายการไม่สำเร็จ ลองอีกครั้งนะครับ";
     $("buy-error").classList.remove("hidden");
   } finally {
     btn.disabled = false;

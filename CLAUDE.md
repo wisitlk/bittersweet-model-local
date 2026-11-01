@@ -70,10 +70,12 @@ wrong; do not weaken or delete a test to make it pass.
 
 ## Rules that must hold
 
-- **The bot never sells.** No orders, payments or addresses until the Thai FDA notification exists.
-  It recommends, suggests a Sample, and adds people to the pre-order waitlist. The web app's buy flow stays a demo
-  (stores nothing, no payment QR) until `FDA_NOTIFICATION_NO` and `PROMPTPAY_ID` are both set. These rules
-  are in `content/system_prompt.md`; keep them when editing the prompt.
+- **The chat bot never takes an order.** Selling happens only in the web app's shop page (`src/checkout.ts`), which
+  is live only when the secrets `FDA_NOTIFICATION_NO` and `PROMPTPAY_ID` are both set (otherwise a demo that stores
+  nothing). The bot recommends, suggests a Sample and links the shop; it never takes orders, payments, slips or
+  addresses in the chat or promises delivery dates. These rules are in `content/system_prompt.md`; keep them.
+- **Points can't be spent twice.** Redemption and the order are one D1 batch guarded by `BALANCE_SQL`
+  (`src/loyalty.ts`); keep any new spending path inside that pattern.
 - **No profile data in the Sheet without consent.** Without `consent_pdpa`, only flags go out for
   handoff or deletion — never message text or profile fields. A deletion request clears D1 history,
   consent and the user's Sheet rows.

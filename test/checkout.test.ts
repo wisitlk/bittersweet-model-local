@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import worker from "../src/index";
 import { crc16, parseOrder, promptPayPayload } from "../src/checkout";
+import { pointBalance } from "../src/loyalty";
 import { renderApp } from "../src/liff";
 import { createFakeD1, rows } from "./fakeD1";
 import type { Env } from "../src/types";
@@ -80,6 +81,55 @@ describe("checkout", () => {
     expect(rows(env.DB, "SELECT total, status, ship_postcode FROM orders")).toEqual([
       { total: 900, status: "awaiting_payment", ship_postcode: "10110" },
     ]);
+  });
+});
+
+describe("points redemption", () => {
+  const OPEN = { FDA_NOTIFICATION_NO: "10-1-0000000000", PROMPTPAY_ID: "0812345678" };
+  const member = { first_name: "สมใจ", last_name: "ใจดี", phone: "0812345678", age: 25, consent: true };
+
+  it("takes 20% or 50% off the products total, computed on the server", () => {
+    expect(parseOrder({ ...order, redeem: "off20" })).toMatchObject({ subtotal: 900, discount: 180, total: 720 });
+    expect(parseOrder({ ...order, redeem: "off50" })).toMatchObject({ subtotal: 900, discount: 450, total: 450 });
+    expect(parseOrder({ ...order, redeem: "" })).toMatchObject({ redeem: null, discount: 0, total: 900 });
+    expect(parseOrder({ ...order, redeem: "off99" })).toBe("bad_redeem");
+    expect(parseOrder({ ...order, redeem: "toString" })).toBe("bad_redeem");
+  });
+
+  it("demo: checks the balance but spends nothing", async () => {
+    const env = makeEnv();
+    expect((await call(env, "/api/checkout", { ...order, redeem: "off20" })).body.error).toBe("not_enough_points");
+    await call(env, "/api/register", member); // +50 register, +20 consent
+    const r = await call(env, "/api/checkout", { ...order, redeem: "off20" });
+    expect(r.body).toMatchObject({ demo: true, total: 720, discount: 180 });
+    expect(await pointBalance(env.DB, USER)).toBe(70);
+    expect(rows(env.DB, "SELECT * FROM orders")).toEqual([]);
+  });
+
+  it("spends the points once with the order, never below zero", async () => {
+    const env = makeEnv(OPEN);
+    await call(env, "/api/register", member);
+    expect((await call(env, "/api/checkout", { ...order, redeem: "off50" })).body.error).toBe("not_enough_points");
+    const r = await call(env, "/api/checkout", { ...order, redeem: "off20" });
+    expect(r.body).toMatchObject({ demo: false, total: 720, points: 20 });
+    expect(String(r.body.promptpay)).toContain("5406720.00");
+    expect(await pointBalance(env.DB, USER)).toBe(20);
+    expect((await call(env, "/api/checkout", { ...order, redeem: "off20" })).body.error).toBe("not_enough_points");
+    expect(rows(env.DB, "SELECT subtotal, discount, points_used, total FROM orders")).toEqual([
+      { subtotal: 900, discount: 180, points_used: 50, total: 720 },
+    ]);
+  });
+
+  it("gives the points back when staff cancel, and 1 point per 10 THB once paid", async () => {
+    const env = makeEnv(OPEN);
+    await call(env, "/api/register", member);
+    const a = await call(env, "/api/checkout", { ...order, redeem: "off20" });
+    const b = await call(env, "/api/checkout", order);
+    expect(await pointBalance(env.DB, USER)).toBe(20);
+    rows(env.DB, `UPDATE orders SET status = 'cancelled' WHERE ref = '${String(a.body.ref)}' RETURNING ref`);
+    expect(await pointBalance(env.DB, USER)).toBe(70);
+    rows(env.DB, `UPDATE orders SET status = 'paid' WHERE ref = '${String(b.body.ref)}' RETURNING ref`);
+    expect(await pointBalance(env.DB, USER)).toBe(70 + 90);
   });
 });
 

@@ -1,16 +1,16 @@
 import { findProduct, SAMPLE_PRICE } from "./catalog";
 import { isRecord } from "./guards";
+import { BALANCE_SQL } from "./loyalty";
 import { cleanPhone } from "./member";
 import type { Env } from "./types";
 
 /*
- * Buy flow of the web app: cart -> shipping address -> PromptPay payment page.
+ * Buy flow of the web app: cart (+ optional points redemption) -> shipping address -> PromptPay payment page.
  *
- * SELLING IS OFF until the Thai FDA cosmetic notification exists (project rule, see CLAUDE.md). Sales open only
- * when BOTH vars are set: FDA_NOTIFICATION_NO (the notification number) and PROMPTPAY_ID (the shop's PromptPay
- * phone or tax id). Until then the same screens run as a demo: prices are computed, but no order and no address
- * is stored and no payment QR is made, so nobody can pay.
- * When sales open, content/knowledge.md and content/system_prompt.md must be updated too (they say "not selling").
+ * Sales are open only when BOTH are set (as Worker secrets, see docs/LIFF.md): FDA_NOTIFICATION_NO (the Thai FDA
+ * cosmetic notification number) and PROMPTPAY_ID (the shop's PromptPay phone or tax id). Without them the same
+ * screens run as a demo: prices are computed, but no order, address or points change is stored and no payment QR
+ * is made, so nobody can pay. The chat bot never takes orders itself; it sends buyers to this page.
  */
 
 export const VARIANTS = {
@@ -18,6 +18,13 @@ export const VARIANTS = {
   sample: { label: "Sample 5 ml", price: SAMPLE_PRICE },
 } as const;
 export type Variant = keyof typeof VARIANTS;
+
+/** Points redemption: one per order, applied to the products total. The page shows these; the server decides. */
+export const REDEEM_OPTIONS = {
+  off20: { points: 50, percent: 20, label: "ใช้ 50 คะแนน ลด 20%" },
+  off50: { points: 200, percent: 50, label: "ใช้ 200 คะแนน ลด 50%" },
+} as const;
+export type RedeemOption = keyof typeof REDEEM_OPTIONS;
 
 export const MAX_QTY = 5; // per line
 export const MAX_LINES = 10;
@@ -37,12 +44,15 @@ export interface Shipping {
 export interface Order {
   lines: OrderLine[];
   shipping: Shipping;
-  total: number; // THB, products only; shipping is agreed in the chat
+  subtotal: number; // THB, products only; shipping is agreed in the chat
+  redeem: RedeemOption | null;
+  discount: number; // THB taken off by the redemption
+  total: number; // subtotal - discount: what the customer pays for the products
 }
 
 export const salesOpen = (env: Env) => Boolean(env.FDA_NOTIFICATION_NO?.trim() && env.PROMPTPAY_ID?.trim());
 
-export type OrderError = "bad_cart" | "bad_shipping";
+export type OrderError = "bad_cart" | "bad_shipping" | "bad_redeem";
 
 function text(v: unknown, max: number): string | null {
   if (typeof v !== "string") return null;
@@ -65,10 +75,19 @@ export function parseOrder(body: unknown): Order | OrderError {
   const address = text(s.address, MAX_ADDRESS_CHARS);
   const postcode = typeof s.postcode === "string" && /^\d{5}$/.test(s.postcode.trim()) ? s.postcode.trim() : null;
   if (!name || !phone || !address || !postcode) return "bad_shipping";
-  // The price always comes from the catalog, never from the page.
-  const total = lines.reduce((sum, l) => sum + VARIANTS[l.variant].price * l.qty, 0);
-  return { lines, shipping: { name, phone, address, postcode }, total };
+  let redeem: RedeemOption | null = null;
+  if (body.redeem !== undefined && body.redeem !== null && body.redeem !== "") {
+    if (typeof body.redeem !== "string" || !Object.hasOwn(REDEEM_OPTIONS, body.redeem)) return "bad_redeem";
+    redeem = body.redeem as RedeemOption;
+  }
+  // The price and the discount always come from the catalog, never from the page.
+  const subtotal = lines.reduce((sum, l) => sum + VARIANTS[l.variant].price * l.qty, 0);
+  const discount = redeem ? Math.round((subtotal * REDEEM_OPTIONS[redeem].percent) / 100) : 0;
+  return { lines, shipping: { name, phone, address, postcode }, subtotal, redeem, discount, total: subtotal - discount };
 }
+
+/** Ledger reason of the points spent on one order; unique per order, so a retry can never spend twice. */
+export const redeemReason = (ref: string) => "redeem:" + ref;
 
 /** CRC-16/CCITT-FALSE, as EMVCo QR codes (PromptPay) require. */
 export function crc16(s: string): string {
@@ -106,12 +125,39 @@ export function orderRef(): string {
   return "BS-" + Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
 }
 
-export async function saveOrder(db: D1Database, ref: string, userId: string, o: Order, now: number): Promise<void> {
-  await db
-    .prepare(
-      `INSERT INTO orders (ref, user_id, lines, total, ship_name, ship_phone, ship_address, ship_postcode, status, created_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 'awaiting_payment', ?9)`,
-    )
-    .bind(ref, userId, JSON.stringify(o.lines), o.total, o.shipping.name, o.shipping.phone, o.shipping.address, o.shipping.postcode, now)
-    .run();
+/**
+ * Saves the order. With a redemption, the points are taken and the order is written in one D1 batch (one
+ * transaction): the points row is only inserted while the balance covers it, and the order row only when that
+ * points row exists, so two orders at once can never spend the same points. Returns false if the points ran out.
+ */
+export async function saveOrder(db: D1Database, ref: string, userId: string, o: Order, now: number): Promise<boolean> {
+  const cols = `(ref, user_id, lines, subtotal, discount, points_used, total, ship_name, ship_phone, ship_address,
+     ship_postcode, status, created_at)`;
+  const values = [ref, userId, JSON.stringify(o.lines), o.subtotal, o.discount, o.redeem ? REDEEM_OPTIONS[o.redeem].points : 0,
+    o.total, o.shipping.name, o.shipping.phone, o.shipping.address, o.shipping.postcode, now];
+  if (!o.redeem) {
+    await db
+      .prepare(`INSERT INTO orders ${cols} VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 'awaiting_payment', ?12)`)
+      .bind(...values)
+      .run();
+    return true;
+  }
+  const cost = REDEEM_OPTIONS[o.redeem].points;
+  const reason = redeemReason(ref);
+  const [, saved] = await db.batch([
+    db
+      .prepare(
+        `INSERT INTO points (user_id, reason, amount, created_at)
+         SELECT ?1, ?2, ?3, ?4 WHERE ${BALANCE_SQL} >= ?5`,
+      )
+      .bind(userId, reason, -cost, now, cost),
+    db
+      .prepare(
+        `INSERT INTO orders ${cols}
+         SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 'awaiting_payment', ?12
+         WHERE EXISTS (SELECT 1 FROM points WHERE user_id = ?2 AND reason = ?13)`,
+      )
+      .bind(...values, reason),
+  ]);
+  return saved?.meta.changes === 1;
 }

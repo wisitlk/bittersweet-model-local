@@ -16,9 +16,21 @@ LINE app ──opens──▶ https://<worker>/app ──API calls with the LINE
 |---|---|---|
 | Added the bot as a friend | +10 | the customer opens the page and LINE confirms the friendship |
 | PDPA consent | +20 | consent given in the chat or on the page |
-| Joined the waitlist | +30 | first waitlist sign-up (once, not per scent) |
+| Joined the waitlist | +30 | first waitlist sign-up (once, not per scent; the button is gone once selling) |
+| Sign-up / survey | +50 / +30 | see below |
+| Purchase | 1 per 10 THB | staff set the order to `paid` (`BAHT_PER_POINT` in `src/loyalty.ts`) |
 
-Each reason counts once per customer. How points are used is "announced when sales open": the brand has not decided.
+Each reason counts once per customer. **Redeem at checkout** (`REDEEM_OPTIONS` in `src/checkout.ts`), one per order,
+on the products total: 50 points = 20% off, 200 points = 50% off. The points are spent in the same D1 transaction that
+saves the order (ledger row `redeem:<ref>`), so they can never go below zero or be spent twice. Purchase points and
+refunds are worked out from the order status, so staff only change the status:
+
+```
+npx wrangler d1 execute bitter_sweet --remote --command "UPDATE orders SET status='paid' WHERE ref='BS-XXXXXX'"
+npx wrangler d1 execute bitter_sweet --remote --command "UPDATE orders SET status='cancelled' WHERE ref='BS-XXXXXX'"
+```
+
+`paid` (or `shipped`) adds the purchase points; `cancelled` gives back the points used on that order.
 Typing "ลบข้อมูล" in the chat deletes points and waitlist too. Points and waitlist rows are not removed by the 7-day
 cleanup, because they are the record the customer expects to keep.
 
@@ -79,9 +91,11 @@ file with the same name and deploy. Cloudflare serves these files directly; they
   only. Shows the personality type and its scent (+30 points), sends answer codes (no names) to the Sheet, and the
   chat bot gets a short note about it before each message.
 - **Checkout** (`/api/checkout`, `src/checkout.ts`): product -> Bottle or Sample and quantity -> shipping address ->
-  PromptPay page. **Demo until the Thai FDA notification exists**: nothing is stored and no QR is drawn.
-  To open sales later: set `FDA_NOTIFICATION_NO` and `PROMPTPAY_ID` in `wrangler.toml` `[vars]`, update
-  `content/knowledge.md` and `content/system_prompt.md` (they say "not selling"), and deploy. Orders then land in
-  D1 `orders` with status `awaiting_payment`; staff check the slip in the LINE chat and update the status.
+  points discount -> PromptPay page. **A demo until both secrets are set** (nothing stored, no QR). To open sales:
+  `npx wrangler secret put FDA_NOTIFICATION_NO` and `npx wrangler secret put PROMPTPAY_ID` (the shop's PromptPay
+  phone or 13-digit tax id; secrets, so it stays out of this public repo), run `migrations/0003_order_redeem.sql`
+  on an existing database, and deploy. The bot text (`content/`) already says the shop is open and sends buyers to
+  `?tab=shop`. Orders land in D1 `orders` with status `awaiting_payment`; staff check the slip in the LINE chat and
+  update the status (commands above).
   A buyer's deletion request goes to staff (paid orders may have to be kept for tax).
 - New tables for an existing database: `npx wrangler d1 execute bitter_sweet --remote --file migrations/0002_surveys_members.sql`.

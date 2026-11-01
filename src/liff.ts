@@ -2,9 +2,9 @@ import appHtml from "../web/app.html";
 import { findProduct, POINT_RULES, PRODUCTS, type PointReason } from "./catalog";
 import { sendCrmRow, type CrmRow } from "./crm";
 import { errName, isRecord } from "./guards";
-import { awardPoints, joinWaitlist, loadPoints, loadWaitlist } from "./loyalty";
+import { awardPoints, BAHT_PER_POINT, joinWaitlist, loadLedger, loadPoints, loadWaitlist, pointBalance, type LedgerRow } from "./loyalty";
 import { allowWebRequest, hasConsent, saveConsent } from "./store";
-import { orderRef, parseOrder, promptPayPayload, salesOpen, saveOrder, VARIANTS } from "./checkout";
+import { orderRef, parseOrder, promptPayPayload, REDEEM_OPTIONS, salesOpen, saveOrder, VARIANTS } from "./checkout";
 import { isMinor, loadMember, MAX_AGE, MIN_AGE, parseMember, saveMember } from "./member";
 import { loadSurvey, parseSurvey, PERSONALITY, QUESTIONS, saveSurvey, type Survey } from "./survey";
 import type { Env } from "./types";
@@ -74,6 +74,8 @@ export function renderApp(liffId: string, sales = false): string {
     liffId,
     sales,
     variants: VARIANTS,
+    redeem: REDEEM_OPTIONS,
+    bahtPerPoint: BAHT_PER_POINT,
     products: PRODUCTS,
     rules: POINT_RULES,
     survey: { questions: QUESTIONS },
@@ -90,9 +92,15 @@ export function surveyResult(s: Survey | null) {
   return { age_group: s.age_group, answers: s.answers, type: p.type, label: p.label, scent: product?.name ?? p.scent };
 }
 
+function ledgerLabel(r: LedgerRow): string {
+  if (r.reason.startsWith("redeem:")) return "แลกส่วนลด " + r.ref;
+  if (r.reason.startsWith("purchase:")) return "ซื้อสินค้า " + r.ref;
+  return POINT_RULES[r.reason as PointReason]?.label ?? r.reason;
+}
+
 async function summary(db: D1Database, userId: string) {
   const [ledger, waitlist, survey, member] = await Promise.all([
-    loadPoints(db, userId),
+    loadLedger(db, userId),
     loadWaitlist(db, userId),
     loadSurvey(db, userId),
     loadMember(db, userId),
@@ -104,7 +112,7 @@ async function summary(db: D1Database, userId: string) {
     points: ledger.reduce((sum, r) => sum + r.points, 0),
     ledger: ledger.map((r) => ({
       reason: r.reason,
-      label: POINT_RULES[r.reason as PointReason]?.label ?? r.reason,
+      label: ledgerLabel(r),
       points: r.points,
       created_at: r.created_at,
     })),
@@ -235,24 +243,29 @@ export async function handleWeb(request: Request, env: Env, ctx: ExecutionContex
   }
 
   if (isCheckout) {
-    // POST /api/checkout {lines: [{product, variant, qty}], shipping: {name, phone, address, postcode}}
+    // POST /api/checkout {lines: [{product, variant, qty}], shipping: {name, phone, address, postcode}, redeem?}
     const order = parseOrder(body);
     if (typeof order === "string") return json({ error: order }, 400);
+    const priced = { subtotal: order.subtotal, discount: order.discount, total: order.total, redeem: order.redeem, lines: order.lines };
     if (!salesOpen(env)) {
-      // Demo until the FDA notification exists: same answer shape, but nothing is stored and no QR is made.
-      return json({ demo: true, ref: "DEMO", total: order.total, lines: order.lines });
+      // Demo (no FDA number or PromptPay id): same answer shape, but nothing is stored, no points are spent and
+      // no QR is made.
+      if (order.redeem && (await pointBalance(env.DB, userId)) < REDEEM_OPTIONS[order.redeem].points) {
+        return json({ error: "not_enough_points" }, 400);
+      }
+      return json({ demo: true, ref: "DEMO", ...priced });
     }
     if (!(await loadMember(env.DB, userId))) return json({ error: "register_required" }, 400);
     const ref = orderRef();
-    await saveOrder(env.DB, ref, userId, order, now);
+    if (!(await saveOrder(env.DB, ref, userId, order, now))) return json({ error: "not_enough_points" }, 400);
     console.error("order_created"); // event name only: no order details in logs
     return json({
       demo: false,
       ref,
-      total: order.total,
-      lines: order.lines,
+      ...priced,
       promptpay: promptPayPayload(env.PROMPTPAY_ID ?? "", order.total),
       fda: env.FDA_NOTIFICATION_NO,
+      ...(await summary(env.DB, userId)),
     });
   }
 
