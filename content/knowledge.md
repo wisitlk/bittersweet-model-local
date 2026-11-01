@@ -22,30 +22,30 @@ source of truth for the agent. If a fact is not here, the agent must say it does
   credited back, so the bottle costs only **201 THB more**.
 - All 5 scents have the same prices. There is no discovery set in this series.
 
-## The five scents (No. 01–05)
+## The five scents
 
-### No. 01 Slow Morning — "เช้าที่ไม่ต้องรีบไปไหน"
+### Slow Morning — "เช้าที่ไม่ต้องรีบไปไหน"
 - Short: green tea, soft, clean (ชาเขียว นุ่ม สะอาด).
 - Smells like: soft matcha green tea, like a warm cup held in both hands, then light clean woods, not sharp.
 - Good for: people who like clean, quiet scents that are not louder than the person next to them; green-tea and
   morning-café lovers; office workers who want one scent for every day without thinking.
 - When: mornings before leaving home, work days.
 
-### No. 02 Self Toast — "ชนแก้วให้ตัวเอง ไม่ต้องมีเหตุผล"
+### Self Toast — "ชนแก้วให้ตัวเอง ไม่ต้องมีเหตุผล"
 - Short: citrus, white flowers, sparkling (ซิตรัส ดอกไม้ขาว มีประกาย).
 - Smells like: fizzy fresh citrus like opening champagne, then white flowers and rose, finishing with warm amber.
 - Good for: people who like bright, sparkling scents that others around them notice; celebrating yourself on an
   ordinary day; people who like flowers but not heavy floral scents.
 - When: good-news days, meeting friends, dates, small parties, evening to night.
 
-### No. 03 Long Bath — "น้ำอุ่น ประตูปิด เวลาที่เป็นของเราคนเดียว"
+### Long Bath — "น้ำอุ่น ประตูปิด เวลาที่เป็นของเราคนเดียว"
 - Short: soap bubbles, powder, musk (ฟองสบู่ แป้ง มัสก์).
 - Smells like: soap bubbles and soft flowers at first, then soft powder and skin musk, like just out of the shower.
 - Good for: people who like a just-showered clean-skin scent; powder and musk that stays close to the skin, not
   spreading far; people who wear perfume for themselves more than for others.
 - When: after a bath, before bed, rest days at home.
 
-### No. 04 Stay In — "ยกเลิกนัด แล้วเลือกโซฟา"
+### Stay In — "ยกเลิกนัด แล้วเลือกโซฟา"
 - Short: powder, woods, warm musk (แป้ง ไม้ มัสก์ อุ่นๆ).
 - Smells like: soft powder and faint flowers at first, slowly warming into woods, musk and a little vanilla, like a
   favourite blanket.
@@ -53,7 +53,7 @@ source of truth for the agent. If a fact is not here, the agent must say it does
   blankets; people who want a scent that stays on clothes.
 - When: days at home, air-conditioned rooms, rainy season, evening until bedtime.
 
-### No. 05 Tea Break — "วันหยุดสบายๆ ที่ไม่มีอะไรต้องทำ"
+### Tea Break — "วันหยุดสบายๆ ที่ไม่มีอะไรต้องทำ"
 - Short: pear, green tea, lily (แพร์ ชาเขียว ลิลลี่).
 - Smells like: crisp fresh pear first, then green tea and lily, finishing with musk and light cedarwood.
 - Good for: people who like fresh fruit that is not cloying; people new to perfume who want something easy to wear;
