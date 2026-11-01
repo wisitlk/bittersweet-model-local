@@ -23,7 +23,14 @@ const valid = {
 const ok = () =>
   new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(valid) }] }, finishReason: "STOP" }] }));
 const overloaded = () => new Response(JSON.stringify({ error: { status: "UNAVAILABLE" } }), { status: 503 });
-const localOk = () => new Response(JSON.stringify({ done_reason: "stop", message: { content: JSON.stringify(valid) } }));
+// Ollama's streamed answer (NDJSON): the reply, then the closing line.
+const localOk = () =>
+  new Response(
+    JSON.stringify({ message: { content: JSON.stringify(valid) }, done: false }) +
+      "\n" +
+      JSON.stringify({ message: { content: "" }, done: true, done_reason: "stop" }) +
+      "\n",
+  );
 
 interface Call {
   url: string;

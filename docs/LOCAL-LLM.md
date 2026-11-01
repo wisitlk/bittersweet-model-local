@@ -99,7 +99,8 @@ For a quick test without a domain, `cloudflared tunnel --url http://localhost:11
 | `local_http_error 530` / `502` | tunnel up but Mac or Ollama down | wake the Mac, open Ollama, check `cloudflared` is running |
 | `local_http_error 404` | model name not found | copy the exact name from `ollama list` |
 | `local_error TimeoutError` | reply took over `LLM_TIMEOUT_MS` | smaller/faster model, or fewer students at once |
-| `local_bad_done_reason length` / `local_schema_mismatch` | model ran out of room or broke the JSON | try another model tag |
+| `local_stream_stopped whitespace_run` | the model started writing only spaces and newlines inside its JSON | it falls back on its own; if frequent, try another model tag |
+| `local_stream_stopped done_length` / `local_schema_mismatch` | model ran out of room or broke the JSON | try another model tag |
 
 ## Switching back to Claude
 

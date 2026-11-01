@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CONSENT_NOTE, RESPONSE_SCHEMA } from "../src/claude";
-import { LOCAL_RESPONSE_SCHEMA } from "../src/llm";
+import { LOCAL_RESPONSE_SCHEMA, MAX_WHITESPACE_RUN } from "../src/llm";
 import { handleEvent, type Content } from "../src/handler";
 import {
   askLocal,
@@ -37,8 +37,14 @@ const cfg: LocalConfig = {
   accessClientSecret: "secret",
 };
 
-function ollama(content: string, done_reason = "stop") {
-  return { model: "qwen3.8:27b", message: { role: "assistant", content }, done: true, done_reason };
+/** Ollama's NDJSON stream: the content in small pieces, then the closing line. */
+function ollama(content: string, done_reason = "stop", piece = 7) {
+  const lines: string[] = [];
+  for (let i = 0; i < content.length; i += piece) {
+    lines.push(JSON.stringify({ model: "m", message: { role: "assistant", content: content.slice(i, i + piece) }, done: false }));
+  }
+  lines.push(JSON.stringify({ model: "m", message: { role: "assistant", content: "" }, done: true, done_reason }));
+  return lines.join("\n") + "\n";
 }
 
 interface Call {
@@ -59,7 +65,9 @@ function stub(payload: unknown, status = 200) {
         body: JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>,
         signal: init?.signal,
       });
-      if (url.includes("llm.example")) return new Response(JSON.stringify(payload), { status });
+      if (url.includes("llm.example")) {
+        return new Response(typeof payload === "string" ? payload : JSON.stringify(payload), { status });
+      }
       return new Response("{}", { status: 200 });
     }),
   );
@@ -75,7 +83,7 @@ afterEach(() => {
 });
 
 describe("buildLocalRequestBody", () => {
-  it("forces the response schema, turns thinking off and does not stream", () => {
+  it("forces the response schema, turns thinking off and streams", () => {
     const body = buildLocalRequestBody("qwen3.8:27b", "SYS", [], "hi");
     expect(body.model).toBe("qwen3.8:27b");
     expect(body.format).toBe(LOCAL_RESPONSE_SCHEMA);
@@ -86,7 +94,7 @@ describe("buildLocalRequestBody", () => {
     expect(LOCAL_RESPONSE_SCHEMA.properties.crm.properties.preferences.maxLength).toBe(120);
     expect(LOCAL_RESPONSE_SCHEMA.properties.crm.properties.segment).toBe(RESPONSE_SCHEMA.properties.crm.properties.segment);
     expect(body.think).toBe(false);
-    expect(body.stream).toBe(false);
+    expect(body.stream).toBe(true);
     expect(body.messages).toEqual([
       { role: "system", content: "SYS" },
       { role: "user", content: "hi" },
@@ -142,6 +150,41 @@ describe("askLocal", () => {
     expect(await askLocal(cfg, "s", [], "hi")).toBeNull();
     stub({ done: true, done_reason: "stop" });
     expect(await askLocal(cfg, "s", [], "hi")).toBeNull();
+  });
+
+  it("stops at the closing brace when Gemma keeps writing whitespace after it", async () => {
+    const json = JSON.stringify({ ...valid, reply: 'มี {วงเล็บ} และ "คำพูด" \\ ในข้อความ' });
+    let cancelled = false;
+    const lines = ollama(json + " \n".repeat(400), "length").split("\n");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        let i = 0;
+        const body = new ReadableStream<Uint8Array>({
+          pull(c) {
+            if (i < lines.length) c.enqueue(new TextEncoder().encode(lines[i++] + "\n"));
+            else c.close();
+          },
+          cancel() {
+            cancelled = true;
+          },
+        });
+        return new Response(body, { status: 200 });
+      }),
+    );
+    expect(await askLocal(cfg, "s", [], "hi")).toEqual(JSON.parse(json));
+    expect(cancelled).toBe(true);
+  });
+
+  it("gives up early on a long run of whitespace inside the object", async () => {
+    stub(ollama('{"reply": "x",' + " ".repeat(MAX_WHITESPACE_RUN + 1) + '"handoff": false}'));
+    expect(await askLocal(cfg, "s", [], "hi")).toBeNull();
+    expect(console.error).toHaveBeenCalledWith("local_stream_stopped", "whitespace_run");
+  });
+
+  it("keeps normal spacing and newlines inside the JSON", async () => {
+    stub(ollama(JSON.stringify(valid, null, 2)));
+    expect(await askLocal(cfg, "s", [], "hi")).toEqual(valid);
   });
 
   it("returns null on timeout", async () => {

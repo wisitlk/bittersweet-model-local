@@ -6,8 +6,8 @@
  *     `set -a; . mac-mini/.env; set +a` first, so the gate's two secrets are sent (they are never printed).
  *   Gemini: first `read -s GEMINI_API_KEY && export GEMINI_API_KEY` (paste the key at the hidden prompt),
  *     then npm run bench:gemini; optional GEMINI_MODEL, GEMINI_THINKING_LEVEL
- *   Add --raw (local only) to also print Ollama's done_reason, token counts and, when a reply fails, the end of
- *     the text Gemma wrote, to see why it ran out of tokens.
+ *   Add --raw (local only) to also print Ollama's done_reason, token counts and, when Gemma does not stop by itself,
+ *     the end of the text it wrote (askLocal stops reading at the closing brace; --raw reads to the end).
  * Prints only timings and the bot's replies; nothing is sent to LINE or the Sheet.
  */
 import { readFileSync } from "node:fs";
@@ -72,14 +72,22 @@ async function rawLocal(text: string): Promise<void> {
     body: JSON.stringify(buildLocalRequestBody(cfg.model, system, [], text)),
     signal: AbortSignal.timeout(cfg.timeoutMs),
   });
-  const data = (await res.json()) as {
+  // The request streams (NDJSON); read it all, without askLocal's early stop, to see what Gemma would write.
+  type Line = {
     done_reason?: string;
     prompt_eval_count?: number;
     eval_count?: number;
     eval_duration?: number;
     message?: { content?: string };
   };
-  const content = data.message?.content ?? "";
+  const lines = (await res.text())
+    .split("\n")
+    .filter((l) => l.trim())
+    .map((l) => JSON.parse(l) as Line);
+  const data = lines.at(-1) ?? {};
+  const content = lines.map((l) => l.message?.content ?? "").join("");
+  const close = content.lastIndexOf("}");
+  console.log(`        chars after the last closing brace: ${close < 0 ? "no brace" : content.length - close - 1}`);
   const tps = data.eval_count && data.eval_duration ? (data.eval_count / (data.eval_duration / 1e9)).toFixed(1) : "?";
   console.log(
     `        raw: done_reason=${data.done_reason} prompt_tokens=${data.prompt_eval_count} ` +

@@ -62,7 +62,8 @@ export function buildLocalRequestBody(
       { role: "user", content: userText },
       ...(consentGiven ? [{ role: "system", content: CONSENT_NOTE }] : []),
     ],
-    stream: false,
+    // Streamed so askLocal can stop as soon as the JSON object closes (see readJsonStream).
+    stream: true,
     think: false,
     format: LOCAL_RESPONSE_SCHEMA,
     // Keep the model loaded between students so nobody waits for it to load from disk.
@@ -77,6 +78,75 @@ export function clampTimeout(value: string | undefined): number {
   const n = Number(value);
   if (value === undefined || !Number.isFinite(n) || n <= 0) return DEFAULT_LOCAL_TIMEOUT_MS;
   return Math.min(n, MAX_LOCAL_TIMEOUT_MS);
+}
+
+// Live 2026-11-01: in 13 of 20 tries Gemma closed (or nearly closed) the JSON and then wrote only spaces and newlines
+// until num_predict ran out: 800 tokens, 12-25 s, done_reason "length". The schema grammar allows whitespace between
+// tokens, so maxLength cannot stop it. Reading the stream and stopping at the closing brace (or after a long run of
+// whitespace) makes those replies finish in normal time, or fail fast so Gemini can answer.
+export const MAX_WHITESPACE_RUN = 24;
+
+/** What readJsonStream saw: the JSON text, or why it stopped without one. */
+export type StreamResult = { ok: true; json: string } | { ok: false; reason: string };
+
+/**
+ * Reads Ollama's NDJSON chat stream and returns the first complete top-level JSON object in the model's text. Tracks
+ * strings and escapes so braces inside the reply do not count. Cancels the stream once the object closes, which also
+ * tells Ollama to stop generating.
+ */
+export async function readJsonStream(body: ReadableStream<Uint8Array>): Promise<StreamResult> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let pending = "";
+  let text = "";
+  let depth = 0;
+  let started = false;
+  let inString = false;
+  let escaped = false;
+  let blank = 0;
+  const stop = async (r: StreamResult) => {
+    await reader.cancel().catch(() => undefined);
+    return r;
+  };
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) return { ok: false, reason: "stream_ended" };
+    pending += decoder.decode(value, { stream: true });
+    let nl: number;
+    while ((nl = pending.indexOf("\n")) >= 0) {
+      const line = pending.slice(0, nl).trim();
+      pending = pending.slice(nl + 1);
+      if (!line) continue;
+      const chunk: unknown = JSON.parse(line);
+      if (!isRecord(chunk)) return stop({ ok: false, reason: "bad_chunk" });
+      if (typeof chunk.error === "string") return stop({ ok: false, reason: "ollama_error" });
+      const msg = chunk.message;
+      const piece = isRecord(msg) && typeof msg.content === "string" ? msg.content : "";
+      for (const ch of piece) {
+        text += ch;
+        if (inString) {
+          if (escaped) escaped = false;
+          else if (ch === "\\") escaped = true;
+          else if (ch === '"') inString = false;
+          continue;
+        }
+        if (ch === " " || ch === "\n" || ch === "\r" || ch === "\t") {
+          if (++blank > MAX_WHITESPACE_RUN) return stop({ ok: false, reason: "whitespace_run" });
+          continue;
+        }
+        blank = 0;
+        if (ch === '"') inString = true;
+        else if (ch === "{" || ch === "[") {
+          depth++;
+          started = true;
+        } else if (ch === "}" || ch === "]") {
+          depth--;
+          if (started && depth === 0) return stop({ ok: true, json: text.trim() });
+        }
+      }
+      if (chunk.done === true) return { ok: false, reason: `done_${String(chunk.done_reason)}` };
+    }
+  }
 }
 
 /** Calls Ollama's /api/chat. Returns null on any failure (HTTP error, truncation, timeout, bad JSON or shape). */
@@ -103,15 +173,13 @@ export async function askLocal(
       console.error("local_http_error", res.status);
       return null;
     }
-    const data: unknown = await res.json();
-    if (!isRecord(data)) return null;
-    if (data.done_reason !== "stop") {
-      console.error("local_bad_done_reason", String(data.done_reason));
+    if (!res.body) return null;
+    const out = await readJsonStream(res.body);
+    if (!out.ok) {
+      console.error("local_stream_stopped", out.reason);
       return null;
     }
-    const msg = data.message;
-    if (!isRecord(msg) || typeof msg.content !== "string") return null;
-    const parsed: unknown = JSON.parse(msg.content);
+    const parsed: unknown = JSON.parse(out.json);
     if (!isConciergeResponse(parsed)) {
       console.error("local_schema_mismatch");
       return null;
