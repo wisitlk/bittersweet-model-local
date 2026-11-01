@@ -229,7 +229,7 @@ export async function handleEvent(
     const row = buildCrmRow(ev.userId, userText, resp, new Date(now), consentStored);
 
     const [reply, saved, crm] = await Promise.allSettled([
-      replyText(token, ev.replyToken, resp.reply),
+      replyText(token, ev.replyToken, withShopLink(resp.reply, env.LIFF_ID)),
       persist,
       row ? sendCrmRow(env.SHEETS_WEBHOOK_URL, env.SHEETS_TOKEN, row, started + WAIT_UNTIL_BUDGET_MS) : Promise.resolve(),
     ]);
@@ -250,4 +250,14 @@ export async function handleEvent(
     // The student must never be left with silence: try once to say sorry.
     if (!replied) await safeReply(token, ev.replyToken, APOLOGY_REPLY, "apology");
   }
+}
+
+/**
+ * The prompt tells the model to say "หน้าร้าน" when the customer wants to buy and never to write a URL (a long
+ * link made the local model run past its token limit), so the shop link is added here instead. Only the model's own
+ * text is stored as the assistant turn.
+ */
+export function withShopLink(reply: string, liffId: string | undefined): string {
+  if (!liffId || !reply.includes("หน้าร้าน") || reply.includes("liff.line.me")) return reply;
+  return `${reply}\n\nหน้าร้าน: https://liff.line.me/${liffId}?tab=shop`;
 }

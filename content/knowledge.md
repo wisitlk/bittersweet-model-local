@@ -78,8 +78,8 @@ come back for the 10 ml bottle within 30 days (Sample 249 THB credited).
   the perfumer.
 
 ## Status and policies (DEMO STATE)
-- **Selling now** (Thai FDA cosmetic notification done; the number is shown on the payment page). Customers buy in
-  the LINE web app shop: https://liff.line.me/2012248666-XEfSJJcL?tab=shop → choose bottle or Sample, quantity,
+- **Selling now** (Thai FDA cosmetic notification done; the number is shown on the payment page). Customers buy at
+  "หน้าร้าน" in the LINE web app (the link is added to the reply automatically) → choose bottle or Sample, quantity,
   optional points discount, shipping address, PromptPay QR, then send the slip in the LINE chat. Shipping cost is
   confirmed by staff in the chat before the transfer. The agent never takes orders, payments, slips or addresses
   in the chat and never promises a delivery date; order questions go to staff (handoff).
@@ -120,7 +120,7 @@ parent or guardian must agree before their profile can be saved.
 - **How long does it last?** Eau de Parfum with 20% perfume oil; it stays on the skin through the day (how long
   exactly depends on skin).
 - **Can I smell it somewhere?** At BitterSweet booths at craft fairs (dates announced on Instagram / LINE).
-- **Can I buy now?** Yes, in the shop page of the LINE web app (link above); pay by PromptPay and send the slip here.
+- **Can I buy now?** Yes, at หน้าร้าน in the LINE web app; pay by PromptPay and send the slip here.
 - **Is there a discovery set?** Not in this series. Try one scent as a Sample 5 ml (249 THB), credited back on a
   10 ml bottle within 30 days.
 - **Gift?** Perfume is personal; a Sample lets the person choose their own scent first.
