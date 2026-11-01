@@ -118,6 +118,7 @@ export async function readJsonStream(body: ReadableStream<Uint8Array>): Promise<
   let text = "";
   let depth = 0;
   let started = false;
+  let begin = 0; // where the object starts in `text`; anything before it (a ``` fence) is dropped
   let inString = false;
   let escaped = false;
   let blank = 0;
@@ -154,11 +155,12 @@ export async function readJsonStream(body: ReadableStream<Uint8Array>): Promise<
         blank = 0;
         if (ch === '"') inString = true;
         else if (ch === "{" || ch === "[") {
+          if (!started) begin = text.length - ch.length;
           depth++;
           started = true;
         } else if (ch === "}" || ch === "]") {
           depth--;
-          if (started && depth === 0) return stop({ ok: true, json: text.trim() });
+          if (started && depth === 0) return stop({ ok: true, json: text.slice(begin) });
         }
       }
       if (chunk.done === true) return { ok: false, reason: `done_${String(chunk.done_reason)}` };
