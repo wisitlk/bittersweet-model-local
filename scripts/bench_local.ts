@@ -6,6 +6,8 @@
  *     `set -a; . mac-mini/.env; set +a` first, so the gate's two secrets are sent (they are never printed).
  *   Gemini: first `read -s GEMINI_API_KEY && export GEMINI_API_KEY` (paste the key at the hidden prompt),
  *     then npm run bench:gemini; optional GEMINI_MODEL, GEMINI_THINKING_LEVEL
+ *   Add --raw (local only) to also print Ollama's done_reason, token counts and, when a reply fails, the end of
+ *     the text Gemma wrote, to see why it ran out of tokens.
  * Prints only timings and the bot's replies; nothing is sent to LINE or the Sheet.
  */
 import { readFileSync } from "node:fs";
@@ -14,7 +16,7 @@ import { fileURLToPath } from "node:url";
 import { buildSystemPrompt } from "../src/claude";
 import { askGemini, DEFAULT_GEMINI_MODEL, DEFAULT_GEMINI_THINKING, GEMINI_TIMEOUT_MS } from "../src/gemini";
 import { HYBRID_LOCAL_MAX_MS } from "../src/handler";
-import { askLocal, DEFAULT_LOCAL_MODEL } from "../src/llm";
+import { askLocal, buildLocalRequestBody, DEFAULT_LOCAL_MODEL } from "../src/llm";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const system = buildSystemPrompt(
@@ -31,6 +33,7 @@ const samples = [
 ];
 
 const useGemini = process.argv.includes("--gemini");
+const raw = !useGemini && process.argv.includes("--raw");
 const geminiKey = process.env.GEMINI_API_KEY ?? "";
 if (useGemini && !geminiKey) {
   console.error("GEMINI_API_KEY is not set: run `read -s GEMINI_API_KEY && export GEMINI_API_KEY` first.");
@@ -56,6 +59,37 @@ console.log(
     ? `Gemini ${geminiModel} (thinking ${thinking}); Worker budget ${budgetMs / 1000} s per reply\n`
     : `model ${cfg.model} at ${cfg.baseUrl}; Worker budget ${budgetMs / 1000} s per reply\n`,
 );
+// Same request as askLocal, but keeps Ollama's own fields so a "length" stop can be inspected.
+async function rawLocal(text: string): Promise<void> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (cfg.accessClientId && cfg.accessClientSecret) {
+    headers["CF-Access-Client-Id"] = cfg.accessClientId;
+    headers["CF-Access-Client-Secret"] = cfg.accessClientSecret;
+  }
+  const res = await fetch(`${cfg.baseUrl.replace(/\/+$/, "")}/api/chat`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(buildLocalRequestBody(cfg.model, system, [], text)),
+    signal: AbortSignal.timeout(cfg.timeoutMs),
+  });
+  const data = (await res.json()) as {
+    done_reason?: string;
+    prompt_eval_count?: number;
+    eval_count?: number;
+    eval_duration?: number;
+    message?: { content?: string };
+  };
+  const content = data.message?.content ?? "";
+  const tps = data.eval_count && data.eval_duration ? (data.eval_count / (data.eval_duration / 1e9)).toFixed(1) : "?";
+  console.log(
+    `        raw: done_reason=${data.done_reason} prompt_tokens=${data.prompt_eval_count} ` +
+      `output_tokens=${data.eval_count} (${tps} tok/s) chars=${content.length}`,
+  );
+  if (data.done_reason !== "stop") console.log(`        last 400 chars: ${JSON.stringify(content.slice(-400))}`);
+  else console.log(`        json: ${content}`);
+  console.log("");
+}
+
 let worst = 0;
 for (const text of samples) {
   const t0 = performance.now();
@@ -68,5 +102,6 @@ for (const text of samples) {
     console.log(`        reply: ${resp.reply}`);
     console.log(`        handoff=${resp.handoff} waitlist=${resp.crm.preorder_waitlist} segment=${resp.crm.segment || "-"}\n`);
   }
+  if (raw) await rawLocal(text);
 }
 console.log(`slowest: ${worst.toFixed(1)} s (the first call can be slower while the model loads; run it twice)`);
