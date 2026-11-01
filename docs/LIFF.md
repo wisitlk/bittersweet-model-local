@@ -64,6 +64,14 @@ cleanup, because they are the record the customer expects to keep.
 8. **Rich menu** (optional): LINE Official Account Manager → Rich menus → add a button with link
    `https://liff.line.me/<LIFF ID>` (catalog) and one with `https://liff.line.me/<LIFF ID>?tab=points` (points).
 
+## Scent pages (links for the product sheet PDF)
+
+`https://liff.line.me/<LIFF ID>?scent=<id>` opens one scent's page (photo, tagline, notes, feel, who it suits, when to
+wear it, price). Anyone can read it without logging in or signing up; the buy button asks for LINE Login and sign-up
+first. The text lives in `src/catalog.ts` (`detail`), copied from product sheet V0.0.6. The ids are `slow_morning`,
+`self_toast`, `long_bath`, `stay_in`, `tea_break` (a hyphen also works, e.g. `?scent=long-bath`). In the shop, each
+card's "ดูรายละเอียดกลิ่น" link opens the same page.
+
 ## Photos
 
 `public/img/` holds the pictures (`hero.jpg` at the top, one per scent, cropped from product sheet V0.0.6). Replace a

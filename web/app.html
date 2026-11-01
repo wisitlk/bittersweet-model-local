@@ -69,6 +69,15 @@
   .avatar { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; display: block; margin: 0 auto 8px;
     background: var(--line); }
   .error { color: #b3261e; font-size: 14px; margin: 8px 0 0; }
+  .scent-photo { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover;
+    object-position: center 88%; }
+  .scent-no { color: var(--muted); font-size: 13px; letter-spacing: 2px; margin: 0; }
+  .scent-name { margin: 2px 0 0; font-size: 28px; }
+  .scent-tag { margin: 2px 0 0; color: var(--muted); }
+  .scent-body h3 { font-size: 15px; margin: 16px 0 4px; color: var(--accent); }
+  .scent-body p, .scent-body ul { margin: 0; }
+  .scent-body ul { padding-left: 20px; }
+  .link { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -114,6 +123,25 @@
       </ul>
     </div></div>
     <div id="products"></div>
+  </section>
+
+  <section id="scent" class="hidden">
+    <div class="card">
+      <img class="scent-photo" id="scent-photo" alt="">
+      <div class="body scent-body">
+        <p class="scent-no" id="scent-no"></p>
+        <h2 class="scent-name" id="scent-name"></h2>
+        <p class="scent-tag" id="scent-tag"></p>
+        <h3>กลิ่นที่ได้</h3><p id="scent-smells"></p>
+        <h3>ฉีดแล้วรู้สึก</h3><p id="scent-feel"></p>
+        <h3>เหมาะกับใคร</h3><ul id="scent-suits"></ul>
+        <h3>ใช้ตอนไหน</h3><p id="scent-when"></p>
+        <p style="margin-top:16px"><strong>ขวด 10 ml 450 บาท · Sample 5 ml 249 บาท</strong></p>
+        <p class="muted" style="margin-top:4px">ซื้อ Sample แล้วกลับมาซื้อขวด 10 ml ภายใน 30 วัน หักคืนค่า Sample 249 บาท</p>
+        <button class="btn" id="scent-buy"></button>
+        <button class="btn ghost" id="scent-all">ดูทั้ง 5 กลิ่น</button>
+      </div>
+    </div>
   </section>
 
   <section id="register" class="hidden">
@@ -236,7 +264,7 @@ let state = { points: 0, ledger: [], waitlist: [], consent: false, survey: null,
 let pending = null;
 
 function show(...ids) {
-  for (const id of ["status", "login", "register", "survey", "shop", "points"]) $(id).classList.toggle("hidden", !ids.includes(id));
+  for (const id of ["status", "login", "register", "survey", "shop", "points", "scent"]) $(id).classList.toggle("hidden", !ids.includes(id));
 }
 function fail(text) { $("status").textContent = text; show("status"); }
 const baht = (n) => n.toLocaleString("th-TH") + " บาท";
@@ -270,7 +298,8 @@ function renderProducts() {
     card.innerHTML = `<div class="photo"></div><div class="body" style="flex:1">
       <div class="row"><strong class="name"></strong><span class="price"></span></div>
       <div class="muted size"></div><p class="blurb" style="margin:8px 0 0"></p>
-      <button class="btn"></button></div>`;
+      <button class="link more" style="margin-top:6px">ดูรายละเอียดกลิ่น</button>
+      <button class="btn buy"></button></div>`;
     const photo = card.querySelector(".photo");
     photo.style.backgroundColor = p.color;
     if (p.image) photo.style.backgroundImage = "url(" + JSON.stringify(p.image) + ")";
@@ -278,7 +307,8 @@ function renderProducts() {
     card.querySelector(".price").textContent = baht(p.price);
     card.querySelector(".size").textContent = p.size;
     card.querySelector(".blurb").textContent = p.blurb;
-    const btn = card.querySelector("button");
+    card.querySelector(".more").onclick = () => openScent(p);
+    const btn = card.querySelector(".buy");
     btn.textContent = CONFIG.sales ? "ซื้อ" : "ซื้อ (เดโม)";
     btn.onclick = () => openBuy(p);
     if (!CONFIG.sales) {
@@ -573,6 +603,54 @@ async function showQr(payload) {
   $("pay-qr").innerHTML = qr.createSvgTag({ cellSize: 5, margin: 4 });
 }
 
+// One scent's page, from the product sheet. liff.line.me/<id>?scent=<product id> opens it straight away, before
+// login or sign-up, so anyone can read it from the PDF; buying still goes through login and sign-up.
+let loggedIn = false;
+let loaded = false; // /api/me answered, so state.member is known
+// Before liff.init the query can still be packed inside liff.state (liff.line.me/<id>?scent=x arrives that way).
+function param(name) {
+  const q = new URLSearchParams(location.search);
+  if (q.has(name)) return q.get(name);
+  const packed = q.get("liff.state");
+  return packed ? new URLSearchParams(packed.slice(packed.indexOf("?") + 1)).get(name) : null;
+}
+function findScent(id) {
+  const key = String(id || "").toLowerCase().replace(/[-\s]/g, "_");
+  return CONFIG.products.find((p) => p.id === key);
+}
+function openScent(p) {
+  const d = p.detail;
+  $("scent-photo").src = p.image || "";
+  $("scent-photo").alt = "ขวดน้ำหอม " + p.name;
+  $("scent-photo").classList.toggle("hidden", !p.image);
+  $("scent-no").textContent = d.number.toUpperCase();
+  $("scent-name").textContent = p.name;
+  $("scent-tag").textContent = d.tagline;
+  $("scent-smells").textContent = d.smells;
+  $("scent-feel").textContent = d.feel;
+  $("scent-when").textContent = d.when;
+  const ul = $("scent-suits");
+  ul.textContent = "";
+  for (const s of d.suits) { const li = document.createElement("li"); li.textContent = s; ul.appendChild(li); }
+  $("scent-buy").textContent = CONFIG.sales ? "ซื้อ " + p.name : "ซื้อ " + p.name + " (เดโม)";
+  $("scent-buy").onclick = () => {
+    if (!loggedIn) return liff.login({ redirectUri: location.href });
+    if (!loaded) return; // still loading the member's points
+    if (!state.member) return afterLogin();
+    openBuy(p);
+  };
+  for (const t of ["survey", "shop", "points"]) $("tab-" + t).setAttribute("aria-selected", String(t === "shop"));
+  show("scent");
+  window.scrollTo(0, 0);
+}
+$("scent-all").onclick = () => {
+  if (!loggedIn) return liff.login({ redirectUri: location.origin + location.pathname + "?tab=shop" });
+  if (!loaded) return;
+  if (!state.member) return afterLogin();
+  selectTab("shop");
+  window.scrollTo(0, 0);
+};
+
 function selectTab(name) {
   for (const t of ["survey", "shop", "points"]) $("tab-" + t).setAttribute("aria-selected", String(name === t));
   show(name);
@@ -586,11 +664,16 @@ async function main() {
   try {
     await liff.init({ liffId: CONFIG.liffId });
   } catch {
+    const only = findScent(param("scent"));
+    if (only) return openScent(only); // the page is still readable; buying needs LIFF
     return fail("เปิดหน้าเว็บไม่สำเร็จ ลองเปิดจากเมนูใน LINE อีกครั้งนะครับ");
   }
-  if (!liff.isLoggedIn()) {
+  const scent = findScent(param("scent"));
+  if (scent) openScent(scent);
+  loggedIn = liff.isLoggedIn();
+  if (!loggedIn) {
     // Inside the LINE app this never shows: LIFF logs the customer in automatically.
-    return show("login");
+    return scent ? undefined : show("login");
   }
   try {
     const profile = await liff.getProfile();
@@ -602,11 +685,17 @@ async function main() {
   } catch { /* the name and photo are only a greeting */ }
   try {
     state = await api("/api/me");
+    loaded = true;
   } catch (e) {
-    if (e.message === "login") return;
+    if (e.message === "login" || scent) return;
     return fail(e.message === "rate_limited" ? "ใช้งานถี่เกินไป รอสักครู่แล้วลองใหม่นะครับ" : "โหลดข้อมูลไม่สำเร็จ ลองใหม่อีกครั้งนะครับ");
   }
   buildSurvey();
+  if (scent) {
+    // Stay on the scent page; the tabs appear for members so they can move on from it.
+    if (state.member) { $("tabs").classList.remove("hidden"); render(); }
+    return;
+  }
   afterLogin();
 }
 
