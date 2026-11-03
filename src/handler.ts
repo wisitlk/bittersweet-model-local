@@ -130,6 +130,15 @@ function localConfig(env: Env, baseUrl: string, timeoutMs: number) {
 }
 
 /**
+ * Where the per-customer survey note goes. The cloud models get it in front of the new message (their system prompt
+ * stays the same for everyone, which keeps their caches shared). The local model gets it at the end of the system
+ * message instead: the stored history holds the customer's words without the note, so a note on the message would
+ * change that turn once it becomes history and make Ollama re-read the chat from there on the next message.
+ */
+const withNote = (note: string, text: string) => (note ? `${note}\n\n${text}` : text);
+const localSystemWithNote = (system: string, note: string) => (note ? `${system}\n\n${note}` : system);
+
+/**
  * "hybrid": the Mac mini first. Gemma is often fast (3-5 s) but sometimes needs 8-10 s, so instead of a hard cut-off
  * Gemini starts alongside it after HYBRID_HEDGE_MS (or at once if the Mac mini fails) and the first good answer wins;
  * the other call is aborted, which also stops Ollama through the gate. Still at most MAX_MODEL_CALLS fetches.
@@ -140,12 +149,14 @@ async function askHybrid(
   system: string,
   history: ChatMessage[],
   userText: string,
+  note: string,
   consentGiven: boolean,
   deadline: number,
 ): Promise<ConciergeResponse | null> {
   const stopLocal = new AbortController();
   const timeout = Math.min(clampTimeout(env.LLM_TIMEOUT_MS), HYBRID_LOCAL_MAX_MS, deadline - Date.now());
-  const local = askLocal({ ...localConfig(env, baseUrl, timeout), signal: stopLocal.signal }, system, history, userText, consentGiven);
+  const cfg = { ...localConfig(env, baseUrl, timeout), signal: stopLocal.signal };
+  const local = askLocal(cfg, localSystemWithNote(system, note), history, userText, consentGiven);
   if (!env.GEMINI_API_KEY) return local;
 
   let hedgeTimer: ReturnType<typeof setTimeout> | undefined;
@@ -158,7 +169,7 @@ async function askHybrid(
 
   // The Mac mini failed or is slow: ask Gemini now, keep waiting for the Mac mini if it is still running.
   console.error(first === "hedge" ? "hybrid_hedge_gemini" : "hybrid_fallback_gemini");
-  const gemini = askGeminiReliable(geminiPlan(env, deadline, MAX_MODEL_CALLS - 1), system, history, userText, consentGiven);
+  const gemini = askGeminiReliable(geminiPlan(env, deadline, MAX_MODEL_CALLS - 1), system, history, withNote(note, userText), consentGiven);
   if (first === null) return gemini;
   const winner = await firstAnswer<{ r: ConciergeResponse; by: "local" | "gemini" }>([
     local.then((r) => (r ? { r, by: "local" } : null)),
@@ -192,19 +203,20 @@ async function askModel(
   system: string,
   history: ChatMessage[],
   userText: string,
+  note: string,
   consentGiven: boolean,
   deadline: number,
 ): Promise<ConciergeResponse | null> {
   const provider = env.LLM_PROVIDER;
   if (provider === "gemini" || provider === "hybrid") {
     if (provider === "hybrid" && env.LLM_BASE_URL) {
-      return askHybrid(env, env.LLM_BASE_URL, system, history, userText, consentGiven, deadline);
+      return askHybrid(env, env.LLM_BASE_URL, system, history, userText, note, consentGiven, deadline);
     }
     if (!env.GEMINI_API_KEY) {
       console.error("gemini_not_configured");
       return null;
     }
-    return askGeminiReliable(geminiPlan(env, deadline, MAX_MODEL_CALLS), system, history, userText, consentGiven);
+    return askGeminiReliable(geminiPlan(env, deadline, MAX_MODEL_CALLS), system, history, withNote(note, userText), consentGiven);
   }
   if (provider === "local") {
     if (!env.LLM_BASE_URL) {
@@ -212,9 +224,9 @@ async function askModel(
       return null;
     }
     const timeout = Math.min(clampTimeout(env.LLM_TIMEOUT_MS), deadline - Date.now());
-    return askLocal(localConfig(env, env.LLM_BASE_URL, timeout), system, history, userText, consentGiven);
+    return askLocal(localConfig(env, env.LLM_BASE_URL, timeout), localSystemWithNote(system, note), history, userText, consentGiven);
   }
-  return askClaude(env.ANTHROPIC_API_KEY ?? "", env.CLAUDE_MODEL || DEFAULT_MODEL, system, history, userText, consentGiven);
+  return askClaude(env.ANTHROPIC_API_KEY ?? "", env.CLAUDE_MODEL || DEFAULT_MODEL, system, history, withNote(note, userText), consentGiven);
 }
 
 export async function handleEvent(
@@ -261,11 +273,11 @@ export async function handleEvent(
       loadHistory(env.DB, ev.userId),
       loadConsentAndSurvey(env.DB, ev.userId),
     ]);
-    // The web-app survey (only with consent) tells the model who it is talking to; it goes in front of the
-    // message for the model only and is never stored as the customer's words.
+    // The web-app survey (only with consent) tells the model who it is talking to; the note is for the model only
+    // (see withNote) and is never stored as the customer's words.
     const scent = survey ? (findProduct(PERSONALITY[survey.personality].scent)?.name ?? "") : "";
-    const modelText = survey ? `${surveyNote(survey, scent)}\n\n${userText}` : userText;
-    const resp = await askModel(env, content.systemPrompt, history, modelText, consentStored, started + MODEL_BUDGET_MS);
+    const note = survey ? surveyNote(survey, scent) : "";
+    const resp = await askModel(env, content.systemPrompt, history, userText, note, consentStored, started + MODEL_BUDGET_MS);
     await loading; // never rejects
     if (!resp) return await say(APOLOGY_REPLY);
 

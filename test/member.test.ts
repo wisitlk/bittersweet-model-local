@@ -168,6 +168,32 @@ describe("sign-up and survey in the web app", () => {
     expect(rows(env.DB, "SELECT content FROM messages WHERE role = 'user'")).toEqual([{ content: "แนะนำหน่อย" }]);
   });
 
+  it("gives the Mac mini the survey inside the system message, so the stored turns match what it saw", async () => {
+    const env = makeEnv({ LLM_PROVIDER: "local", LLM_BASE_URL: "https://mini.example" });
+    await call(env, "/api/register", "POST", member);
+    await call(env, "/api/survey", "POST", { answers });
+    const chats: { messages: { role: string; content: string }[] }[] = [];
+    const base = globalThis.fetch;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (!String(input).includes("/api/chat")) return base(input, init);
+        chats.push(JSON.parse(String(init?.body)) as (typeof chats)[number]);
+        return new Response("{}", { status: 503 });
+      }),
+    );
+    await handleEvent(
+      { kind: "text", replyToken: "rt", userId: USER, text: "แนะนำหน่อย", webhookEventId: "E1" },
+      env,
+      { systemPrompt: "SYS", greeting: "hi" },
+      Date.now(),
+    );
+    const msgs = chats[0]?.messages ?? [];
+    expect(msgs[0]?.role).toBe("system");
+    expect(msgs[0]?.content).toContain("Morning Minimalist");
+    expect(msgs.at(-1)).toEqual({ role: "user", content: "แนะนำหน่อย" });
+  });
+
   it("deletes member details and survey with a deletion request", async () => {
     const env = makeEnv();
     await call(env, "/api/register", "POST", member);
