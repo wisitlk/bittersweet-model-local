@@ -61,6 +61,7 @@ wrong; do not weaken or delete a test to make it pass.
 | `src/messages.ts` | Fixed Thai replies (busy, limit reached, apology, non-text) |
 | `content/` | `knowledge.md`, `system_prompt.md`, `greeting_th.txt` — bundled as text modules |
 | `src/liff.ts`, `src/catalog.ts`, `src/loyalty.ts` | LINE web app (`/app`, `/api/me`, `/api/waitlist`): ID-token check, catalog, points, waitlist (see `docs/LIFF.md`) |
+| `src/admin.ts` | Staff dashboard API (`/api/admin`, `/api/admin/order`) for LINE users in `ADMIN_LINE_USER_IDS`; order status changes |
 | `src/member.ts`, `src/survey.ts`, `src/checkout.ts` | Web app sign-up, scent survey, and the buy flow (demo until `FDA_NOTIFICATION_NO` + `PROMPTPAY_ID` are set) |
 | `web/app.html`, `public/img/` | The web app page (text module) and its photos (static assets) |
 | `schema.sql` | D1 tables |

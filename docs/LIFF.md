@@ -72,6 +72,17 @@ first. The text lives in `src/catalog.ts` (`detail`), copied from product sheet 
 `self_toast`, `long_bath`, `stay_in`, `tea_break` (a hyphen also works, e.g. `?scent=long-bath`). In the shop, each
 card's "ดูรายละเอียดกลิ่น" link opens the same page.
 
+## Staff dashboard (แอดมิน tab)
+
+LINE users listed in the secret `ADMIN_LINE_USER_IDS` (comma separated) see a fourth tab, แอดมิน, after signing up as
+members. It shows the funnel counts (chatters and messages in the last 7 days, PDPA consents, members, surveys,
+orders), sales from paid and shipped orders, the survey groups and age ranges, pre-order counts, and the newest 50
+orders with buttons to confirm payment, mark shipped, or cancel. Points follow the status on their own. A full
+address is shown only for paid orders waiting to ship. Everyone else gets 404 from `/api/admin`.
+
+Set it on the computer you deploy from: `npx wrangler secret put ADMIN_LINE_USER_IDS` and paste your LINE user id
+(LINE Developers Console → your LINE Login channel → Basic settings → "Your user ID", starts with U).
+
 ## Photos
 
 `public/img/` holds the pictures (`hero.jpg` at the top, one per scent, cropped from product sheet V0.0.6). Replace a

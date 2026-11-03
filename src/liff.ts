@@ -1,4 +1,5 @@
 import appHtml from "../web/app.html";
+import { adminOrders, adminSummary, isAdmin, setOrderStatus } from "./admin";
 import { findProduct, POINT_RULES, PRODUCTS, type PointReason } from "./catalog";
 import { sendCrmRow, type CrmRow } from "./crm";
 import { errName, isRecord } from "./guards";
@@ -195,7 +196,9 @@ export async function handleWeb(request: Request, env: Env, ctx: ExecutionContex
   const isSurvey = pathname === "/api/survey" && request.method === "POST";
   const isRegister = pathname === "/api/register" && request.method === "POST";
   const isCheckout = pathname === "/api/checkout" && request.method === "POST";
-  if (!isMe && !isWaitlist && !isSurvey && !isRegister && !isCheckout) return null;
+  const isAdminGet = pathname === "/api/admin" && request.method === "GET";
+  const isAdminOrder = pathname === "/api/admin/order" && request.method === "POST";
+  if (!isMe && !isWaitlist && !isSurvey && !isRegister && !isCheckout && !isAdminGet && !isAdminOrder) return null;
 
   if (!env.LINE_LOGIN_CHANNEL_ID) {
     console.error("liff_not_configured");
@@ -220,7 +223,23 @@ export async function handleWeb(request: Request, env: Env, ctx: ExecutionContex
       friend && !has("friend") ? awardPoints(env.DB, userId, "friend", now) : null,
       consent && !has("consent") ? awardPoints(env.DB, userId, "consent", now) : null,
     ]);
-    return json({ ...(await summary(env.DB, userId)), friend, consent });
+    return json({ ...(await summary(env.DB, userId)), friend, consent, admin: isAdmin(env, userId) });
+  }
+
+  if (isAdminGet || isAdminOrder) {
+    // Staff only: the same 404 as an unknown path, so the dashboard's existence is not advertised.
+    if (!isAdmin(env, userId)) return json({ error: "not_found" }, 404);
+    if (isAdminGet) {
+      const [stats, orders] = await Promise.all([adminSummary(env.DB, now), adminOrders(env.DB)]);
+      return json({ ...stats, orderList: orders, sales_open: salesOpen(env) });
+    }
+    // POST /api/admin/order {ref, status}
+    const change = await readJson(request);
+    if (!isRecord(change)) return json({ error: "bad_request" }, 400);
+    const result = await setOrderStatus(env.DB, change.ref, change.status);
+    if (result !== "ok") return json({ error: result }, result === "not_found" ? 404 : 400);
+    console.error("order_status_changed"); // event name only
+    return json({ ok: true, orderList: await adminOrders(env.DB) });
   }
 
   const body = await readJson(request);

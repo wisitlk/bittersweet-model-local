@@ -28,4 +28,5 @@ export interface Env {
   LLM_ACCESS_CLIENT_SECRET?: string;
   SHEETS_WEBHOOK_URL?: string;
   SHEETS_TOKEN?: string;
+  ADMIN_LINE_USER_IDS?: string; // comma-separated LINE user ids that see the staff dashboard (src/admin.ts)
 }

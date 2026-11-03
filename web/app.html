@@ -23,7 +23,7 @@
   h1 { margin: 0; font-size: 22px; letter-spacing: .5px; }
   .tag { color: var(--muted); font-size: 14px; margin: 2px 0 0; }
   nav { display: flex; gap: 8px; padding: 8px 16px; position: sticky; top: 0; background: var(--bg); z-index: 2; }
-  nav button { flex: 1; padding: 10px; border-radius: 999px; border: 1px solid var(--line);
+  nav button { flex: 1; padding: 10px 4px; white-space: nowrap; font-size: 15px !important; border-radius: 999px; border: 1px solid var(--line);
     background: var(--card); color: var(--ink); font: inherit; }
   nav button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
   main { padding: 8px 16px 32px; max-width: 560px; margin: 0 auto; }
@@ -77,6 +77,16 @@
   .scent-body h3 { font-size: 15px; margin: 16px 0 4px; color: var(--accent); }
   .scent-body p, .scent-body ul { margin: 0; }
   .scent-body ul { padding-left: 20px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+  .stat { background: var(--bg); border-radius: 10px; padding: 8px; text-align: center; }
+  .stat b { display: block; font-size: 19px; white-space: nowrap; }
+  .bar { display: grid; grid-template-columns: 9em 1fr 2.5em; gap: 8px; align-items: center; font-size: 14px; padding: 4px 0; }
+  .bar i { display: block; height: 10px; border-radius: 5px; background: var(--accent); min-width: 2px; }
+  .order { border-top: 1px solid var(--line); padding: 10px 0; font-size: 14px; }
+  .order:first-of-type { border-top: 0; }
+  .order .acts { display: flex; gap: 8px; margin-top: 6px; }
+  .order .acts button { flex: 1; padding: 8px; border-radius: 10px; border: 1px solid var(--accent); background: transparent;
+    color: var(--accent); font: inherit; }
   .link { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; text-decoration: underline; }
 </style>
 </head>
@@ -90,6 +100,7 @@
   <button id="tab-survey" aria-selected="false">แบบสอบถาม</button>
   <button id="tab-shop" aria-selected="true">น้ำหอม</button>
   <button id="tab-points" aria-selected="false">คะแนนสะสม</button>
+  <button id="tab-admin" aria-selected="false" class="hidden">แอดมิน</button>
 </nav>
 <main>
   <div id="status">กำลังโหลด…</div>
@@ -201,6 +212,32 @@
     </div></div>
     <p class="muted">ต้องการลบข้อมูลทั้งหมด (รวมคะแนนและรายชื่อ pre-order) พิมพ์ "ลบข้อมูล" ในแชท LINE ได้ทุกเมื่อ</p>
   </section>
+
+  <section id="admin" class="hidden">
+    <p class="notice">หน้านี้สำหรับทีมงานเท่านั้น มีข้อมูลลูกค้า อย่าแคปหน้าจอส่งต่อ</p>
+    <div class="card"><div class="body">
+      <strong>Funnel</strong>
+      <div class="stats" id="adm-funnel"></div>
+    </div></div>
+    <div class="card"><div class="body">
+      <strong>ยอดขาย (ชำระแล้ว + ส่งแล้ว)</strong>
+      <div class="stats" id="adm-sales"></div>
+      <p class="muted" id="adm-sales-note" style="margin:8px 0 0"></p>
+    </div></div>
+    <div class="card"><div class="body">
+      <strong>กลุ่มลูกค้าจากแบบสอบถาม</strong>
+      <div id="adm-personality"></div>
+      <strong style="display:block;margin-top:12px">ช่วงอายุ</strong>
+      <div id="adm-age"></div>
+      <strong style="display:block;margin-top:12px">ลงชื่อ pre-order</strong>
+      <div id="adm-waitlist"></div>
+    </div></div>
+    <div class="card"><div class="body">
+      <div class="row"><strong>คำสั่งซื้อล่าสุด</strong><button class="link" id="adm-refresh">โหลดใหม่</button></div>
+      <p class="muted" style="margin:4px 0 0">ที่อยู่เต็มแสดงเฉพาะออเดอร์ที่ชำระแล้วและรอส่ง</p>
+      <div id="adm-orders"></div>
+    </div></div>
+  </section>
 </main>
 
 <dialog id="buy">
@@ -264,7 +301,7 @@ let state = { points: 0, ledger: [], waitlist: [], consent: false, survey: null,
 let pending = null;
 
 function show(...ids) {
-  for (const id of ["status", "login", "register", "survey", "shop", "points", "scent"]) $(id).classList.toggle("hidden", !ids.includes(id));
+  for (const id of ["status", "login", "register", "survey", "shop", "points", "scent", "admin"]) $(id).classList.toggle("hidden", !ids.includes(id));
 }
 function fail(text) { $("status").textContent = text; show("status"); }
 const baht = (n) => n.toLocaleString("th-TH") + " บาท";
@@ -652,12 +689,91 @@ $("scent-all").onclick = () => {
 };
 
 function selectTab(name) {
-  for (const t of ["survey", "shop", "points"]) $("tab-" + t).setAttribute("aria-selected", String(name === t));
+  for (const t of ["survey", "shop", "points", "admin"]) $("tab-" + t).setAttribute("aria-selected", String(name === t));
+  if (name === "admin") loadAdmin();
   show(name);
 }
 $("tab-survey").onclick = () => selectTab("survey");
 $("tab-shop").onclick = () => selectTab("shop");
 $("tab-points").onclick = () => selectTab("points");
+$("tab-admin").onclick = () => selectTab("admin");
+
+// Staff dashboard: only shown when /api/me says admin; the server checks again on every /api/admin call.
+const STATUS_TH = { awaiting_payment: "รอชำระ", paid: "ชำระแล้ว รอส่ง", shipped: "ส่งแล้ว", cancelled: "ยกเลิก" };
+const ACTION_TH = { paid: "ยืนยันชำระแล้ว", shipped: "ส่งของแล้ว", cancelled: "ยกเลิก" };
+function stat(box, label, value) {
+  const d = document.createElement("div");
+  d.className = "stat";
+  d.innerHTML = "<b></b><span class=\"muted\"></span>";
+  d.firstChild.textContent = value;
+  d.lastChild.textContent = label;
+  box.appendChild(d);
+}
+function bars(box, rows) {
+  box.textContent = "";
+  const max = Math.max(1, ...rows.map((r) => r.count));
+  if (!rows.length) { box.innerHTML = "<p class=\"muted\" style=\"margin:4px 0\">ยังไม่มีข้อมูล</p>"; return; }
+  for (const r of rows) {
+    const d = document.createElement("div");
+    d.className = "bar";
+    d.innerHTML = "<span></span><i></i><span style=\"text-align:right\"></span>";
+    d.children[0].textContent = r.label;
+    d.children[1].style.width = (100 * r.count / max) + "%";
+    d.children[2].textContent = r.count;
+    box.appendChild(d);
+  }
+}
+function renderOrders(list) {
+  const box = $("adm-orders");
+  box.textContent = "";
+  if (!list.length) { box.innerHTML = "<p class=\"muted\">ยังไม่มีคำสั่งซื้อ</p>"; return; }
+  for (const o of list) {
+    const d = document.createElement("div");
+    d.className = "order";
+    d.innerHTML = "<div class=\"row\"><strong></strong><span></span></div><div></div><div class=\"muted\"></div><div class=\"muted\"></div><div class=\"acts\"></div>";
+    d.children[0].children[0].textContent = o.ref + " · " + baht(o.total);
+    d.children[0].children[1].textContent = STATUS_TH[o.status] || o.status;
+    d.children[1].textContent = o.items;
+    d.children[2].textContent = o.name + " · " + o.phone + " · " + o.address;
+    d.children[3].textContent = new Date(o.created_at).toLocaleString("th-TH") +
+      (o.discount ? " · ส่วนลด " + baht(o.discount) + " (" + o.points_used + " คะแนน)" : "");
+    for (const to of o.next) {
+      const b = document.createElement("button");
+      b.textContent = ACTION_TH[to];
+      b.onclick = async () => {
+        if (!confirm(ACTION_TH[to] + " " + o.ref + " ?")) return;
+        b.disabled = true;
+        try { renderOrders((await api("/api/admin/order", { method: "POST", body: JSON.stringify({ ref: o.ref, status: to }) })).orderList); }
+        catch (e) { alert("เปลี่ยนสถานะไม่สำเร็จ (" + e.message + ")"); b.disabled = false; }
+      };
+      d.lastChild.appendChild(b);
+    }
+    box.appendChild(d);
+  }
+}
+async function loadAdmin() {
+  let a;
+  try { a = await api("/api/admin"); } catch (e) { $("adm-orders").textContent = "โหลดไม่สำเร็จ (" + e.message + ")"; return; }
+  const f = $("adm-funnel"); f.textContent = "";
+  stat(f, "คนทักแชท 7 วัน", a.funnel.chatters7d);
+  stat(f, "ข้อความ 7 วัน", a.funnel.messages7d);
+  stat(f, "ยินยอม PDPA", a.funnel.consents);
+  stat(f, "สมาชิก", a.funnel.members);
+  stat(f, "ทำแบบสอบถาม", a.funnel.surveys);
+  stat(f, "คำสั่งซื้อ", a.funnel.orders);
+  const s = $("adm-sales"); s.textContent = "";
+  stat(s, "ยอดขาย", baht(a.sales.revenue));
+  stat(s, "ส่วนลดจากคะแนน", baht(a.sales.discount));
+  stat(s, "คะแนนที่ใช้", a.sales.points_used);
+  $("adm-sales-note").textContent = (a.sales_open ? "ร้านเปิดขายจริง" : "ร้านยังเป็นเดโม (ยังไม่ได้ตั้ง PROMPTPAY_ID)") +
+    " · รอชำระ " + (a.orders.awaiting_payment || 0) + " · รอส่ง " + (a.orders.paid || 0) +
+    " · ส่งแล้ว " + (a.orders.shipped || 0) + " · ยกเลิก " + (a.orders.cancelled || 0);
+  bars($("adm-personality"), a.personality.map((p) => ({ label: p.label, count: p.count })));
+  bars($("adm-age"), Object.entries(a.ageGroups).map(([k, n]) => ({ label: k + " ปี", count: n })));
+  bars($("adm-waitlist"), a.waitlist.map((w) => ({ label: w.name, count: w.count })));
+  renderOrders(a.orderList);
+}
+$("adm-refresh").onclick = loadAdmin;
 $("login-btn").onclick = () => liff.login({ redirectUri: location.href });
 
 async function main() {
@@ -708,11 +824,13 @@ function afterLogin() {
   }
   $("hello").textContent = "สวัสดี คุณ" + state.member.first_name;
   $("tabs").classList.remove("hidden");
+  $("tab-admin").classList.toggle("hidden", !state.admin);
   render();
   // liff.line.me/<id>?tab=points|survey|shop opens that page (LIFF restores the query after login).
   // Without one, a customer who has not answered the survey starts there.
   const want = new URLSearchParams(location.search).get("tab") || location.hash.slice(1);
-  selectTab(["survey", "shop", "points"].includes(want) ? want : state.survey ? "shop" : "survey");
+  const tabs = state.admin ? ["survey", "shop", "points", "admin"] : ["survey", "shop", "points"];
+  selectTab(tabs.includes(want) ? want : state.survey ? "shop" : "survey");
 }
 main();
 </script>
