@@ -105,7 +105,10 @@ describe("buildLocalRequestBody", () => {
     const body = buildLocalRequestBody("m", "SYS", [], "hi");
     expect(body.stream).toBe(true);
     expect(body).not.toHaveProperty("format");
-    expect(body.messages.at(-1)).toEqual({ role: "system", content: LOCAL_JSON_HINT });
+    expect(body.messages).toEqual([
+      { role: "system", content: `SYS\n\n${LOCAL_JSON_HINT}` },
+      { role: "user", content: "hi" },
+    ]);
   });
 
   it("shows earlier bot replies in the JSON shape when the grammar is off", () => {
@@ -120,15 +123,20 @@ describe("buildLocalRequestBody", () => {
     expect(isConciergeResponse(turn)).toBe(true);
   });
 
-  it("keeps the system prompt first and adds the consent note after the user turn", () => {
+  it("puts the hint and the consent note in the one system message, so the next request reuses the cached prompt", () => {
     const history = [
       { role: "user" as const, content: "a" },
       { role: "assistant" as const, content: "b" },
     ];
     const body = buildLocalRequestBody("m", "SYS", history, "hi", true);
-    expect(body.messages[0]).toEqual({ role: "system", content: "SYS" });
-    expect(body.messages.slice(1, 3)).toEqual(history.map(asJsonTurn));
-    expect(body.messages.at(-1)).toEqual({ role: "system", content: CONSENT_NOTE });
+    expect(body.messages).toEqual([
+      { role: "system", content: `SYS\n\n${LOCAL_JSON_HINT}\n\n${CONSENT_NOTE}` },
+      ...history.map(asJsonTurn),
+      { role: "user", content: "hi" },
+    ]);
+    // The next turn starts with exactly the same messages: only new ones are added at the end.
+    const next = buildLocalRequestBody("m", "SYS", [...history, { role: "user", content: "hi" }, { role: "assistant", content: "c" }], "more", true);
+    expect(next.messages.slice(0, body.messages.length)).toEqual(body.messages);
   });
 });
 

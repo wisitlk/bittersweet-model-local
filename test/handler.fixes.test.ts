@@ -141,7 +141,7 @@ describe("never silence", () => {
     const e = env();
     const realPrepare = e.DB.prepare.bind(e.DB);
     e.DB.prepare = ((sql: string) => {
-      if (sql.startsWith("SELECT role, content FROM messages")) throw new Error("d1 down");
+      if (sql.startsWith("SELECT role, content")) throw new Error("d1 down");
       return realPrepare(sql);
     }) as D1Database["prepare"];
     await handleEvent(text("E1"), e, content, NOW);

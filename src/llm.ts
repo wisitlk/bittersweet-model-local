@@ -93,13 +93,15 @@ export function buildLocalRequestBody(
 ) {
   return {
     model,
-    // The system prompt comes first and stays byte-identical, so Ollama can reuse its cached prefix.
+    // One system message, then the history, then the new question, and nothing after it. Ollama reuses its cached
+    // prompt only up to the first token that differs from the previous request, and a system message placed after the
+    // user turn broke that right after the system prompt, so the whole history (~1,700 tokens, ~5 s) was read again
+    // on every message. Measured 2026-11-03 on the Mac mini: first token after 5.4 s that way, 0.5 s this way.
+    // The consent note sits in the system message, so there are two stable prefixes (with and without consent).
     messages: [
-      { role: "system", content: system },
+      { role: "system", content: localSystem(system, consentGiven, useFormat) },
       ...(useFormat ? history : history.map(asJsonTurn)),
       { role: "user", content: userText },
-      ...(useFormat ? [] : [{ role: "system", content: LOCAL_JSON_HINT }]),
-      ...(consentGiven ? [{ role: "system", content: CONSENT_NOTE }] : []),
     ],
     // Streamed so askLocal can stop as soon as the JSON object closes (see readJsonStream).
     stream: true,
@@ -111,6 +113,11 @@ export function buildLocalRequestBody(
     // No repeat_penalty: it penalises the quotes and braces JSON must repeat (tried live 2026-10-31: 6 of 10 failed).
     options: { temperature: 0.3, num_predict: 800, num_ctx: 8192 },
   };
+}
+
+/** The system prompt plus, for the local model, the JSON instructions and the consent note, in a fixed order. */
+export function localSystem(system: string, consentGiven: boolean, useFormat: boolean): string {
+  return [system, ...(useFormat ? [] : [LOCAL_JSON_HINT]), ...(consentGiven ? [CONSENT_NOTE] : [])].join("\n\n");
 }
 
 export function clampTimeout(value: string | undefined): number {

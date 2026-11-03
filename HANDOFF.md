@@ -43,7 +43,7 @@ Keep these unless you have a reason; each one was a deliberate choice.
   it. D1 allows 100,000 rows written a day.
 - **Cost and abuse limits** (in `wrangler.toml`): 20 messages per 10 minutes and 60 per day per
   user; 1,500 Claude calls per day for the whole bot. User text is cut to 1,000 characters.
-- **Memory:** the bot sees the last 10 exchanges with each person. History is deleted after 7 days
+- **Memory:** the bot sees the last 7-10 exchanges with each person (old ones are dropped 4 at a time so the start of the history stays the same for several messages, which keeps the Mac mini fast). History is deleted after 7 days
   by a daily cron job.
 - **The Sheet is an append log.** Every profile update adds a new row rather than editing the old
   one. Switching to one row per customer is an open choice, not a bug.
