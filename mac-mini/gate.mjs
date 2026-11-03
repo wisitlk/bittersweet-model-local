@@ -48,10 +48,16 @@ export function createGate({ clientId, clientSecret, upstream, maxConcurrent = 2
     };
     // When the Worker gives up (its 9 s cap) it closes the connection; stop Ollama too, so a runaway reply does not keep
     // the Mac busy and slow down the next customer.
+    // firstByte = when Ollama sent its first token, i.e. how long it spent reading the prompt; it tells a slow prompt
+    // apart from a slow or runaway reply in the log.
     let up = null;
+    let firstByte = null;
+    const timing = () => `${Date.now() - started}ms first_byte=${firstByte === null ? "none" : `${firstByte}ms`}`;
     res.on("close", () => {
       release();
-      if (up && !res.writableFinished) up.destroy(new Error("client_closed"));
+      if (res.writableFinished) return;
+      log(`gate client_closed ${timing()}`);
+      if (up) up.destroy(new Error("client_closed"));
     });
 
     const chunks = [];
@@ -77,13 +83,16 @@ export function createGate({ clientId, clientSecret, upstream, maxConcurrent = 2
         },
         (upRes) => {
           res.writeHead(upRes.statusCode ?? 502, { "Content-Type": upRes.headers["content-type"] ?? "application/json" });
+          upRes.once("data", () => (firstByte = Date.now() - started));
+          // After the Worker hangs up, destroying `up` makes upRes emit "error"; the close handler above logged it.
+          upRes.on("error", () => undefined);
           upRes.pipe(res);
-          upRes.on("end", () => log(`gate ${upRes.statusCode} ${Date.now() - started}ms`));
+          upRes.on("end", () => log(`gate ${upRes.statusCode} ${timing()}`));
         },
       );
       up.on("timeout", () => up.destroy(new Error("timeout")));
       up.on("error", (e) => {
-        if (e.message === "client_closed") return log(`gate client_closed ${Date.now() - started}ms`);
+        if (e.message === "client_closed") return;
         done(e.message === "timeout" ? 504 : 502);
       });
       up.end(body);

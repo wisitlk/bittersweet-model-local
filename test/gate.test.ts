@@ -57,7 +57,8 @@ describe("Mac mini gate", () => {
     expect((await fetch(base + "/healthz")).status).toBe(200);
   });
 
-  it("stops the Ollama request when the caller hangs up", async () => {
+  it("stops the Ollama request when the caller hangs up, and logs it", async () => {
+    const lines: string[] = [];
     let upstreamClosed!: () => void;
     const closed = new Promise<void>((r) => (upstreamClosed = r));
     const slow = http.createServer((req, res) => {
@@ -74,7 +75,7 @@ describe("Mac mini gate", () => {
       clientId: ID,
       clientSecret: SECRET,
       upstream: `http://127.0.0.1:${(slow.address() as AddressInfo).port}`,
-      log: () => undefined,
+      log: (line: string) => lines.push(line),
     });
     await new Promise<void>((r) => g.listen(0, "127.0.0.1", r));
     const ctrl = new AbortController();
@@ -87,6 +88,7 @@ describe("Mac mini gate", () => {
     await res.body?.getReader().read();
     ctrl.abort();
     await closed; // resolves only if the gate closed its request to the upstream
+    expect(lines.some((l) => /^gate client_closed \d+ms first_byte=\d+ms$/.test(l))).toBe(true);
     g.close();
     slow.close();
   });

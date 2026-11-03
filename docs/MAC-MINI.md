@@ -1,11 +1,12 @@
 # Gemma on the Mac mini, Gemini as backup ("hybrid")
 
-The bot asks Gemma 4 on your own Mac mini first. If the Mac mini is off, asleep, busy or slower than 9 s, the
-Worker asks Gemini instead (main model, then the Flash-Lite backup), so students still get an answer.
+The bot asks Gemma 4 on your own Mac mini first. If the Mac mini is off, asleep or busy, the Worker asks Gemini
+at once (main model, then the Flash-Lite backup). If Gemma is still writing after 7 s, Gemini starts alongside it and
+whichever answers first is used (Gemma may run up to 14 s), so students still get an answer.
 
 ```
 LINE → Cloudflare Worker ──HTTPS + 2 secret headers──▶ quick tunnel ──▶ gate (port 11435) ──▶ Ollama app (Gemma)
-                     └──── if no good answer in 9 s  ──▶ Gemini API
+                     └──── Mac mini fails, or 7 s pass ──▶ Gemini API (first good answer wins)
 ```
 
 - A **tunnel** (`cloudflared`) lets the Worker reach a program on the Mac without opening your router. It only
@@ -64,7 +65,9 @@ Leave the window open.
    `GEMINI_API_KEY` must already be set (it is the backup).
 3. `npm run typecheck && npm test && npm run lint`, then `npm run deploy` (your call).
 4. Check: send the bot a message in LINE, and watch `npx wrangler tail`. `hybrid_fallback_gemini` in the log
-   means the Mac mini did not answer and Gemini did.
+   means the Mac mini failed; `hybrid_hedge_gemini` means it was still writing at 7 s, followed by
+   `hybrid_local_won` or `hybrid_gemini_won`. No `hybrid_*` line means Gemma answered within 7 s. The gate's own
+   log shows `first_byte=` (how long Gemma read the prompt) and `client_closed` when the Worker stopped waiting.
 
 Optional: time the whole path through the tunnel from the Mac mini itself:
 ```

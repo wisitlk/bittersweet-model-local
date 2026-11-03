@@ -46,6 +46,8 @@ export interface LocalConfig {
   accessClientSecret?: string;
   // true = send Ollama's `format` grammar; false (the Worker's default) = ask for the JSON in words (LOCAL_JSON_HINT).
   useFormat?: boolean;
+  // Aborts the call early, e.g. when Gemini has already answered in "hybrid".
+  signal?: AbortSignal;
 }
 
 /**
@@ -206,7 +208,7 @@ export async function askLocal(
       method: "POST",
       headers,
       body: JSON.stringify(buildLocalRequestBody(cfg.model, system, history, userText, consentGiven, cfg.useFormat === true)),
-      signal: AbortSignal.timeout(cfg.timeoutMs),
+      signal: cfg.signal ? AbortSignal.any([AbortSignal.timeout(cfg.timeoutMs), cfg.signal]) : AbortSignal.timeout(cfg.timeoutMs),
     });
     if (!res.ok) {
       console.error("local_http_error", res.status);

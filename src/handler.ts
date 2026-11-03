@@ -56,13 +56,15 @@ export const MAX_USER_TEXT_CHARS = 1000;
  *
  * Time: ctx.waitUntil() keeps the Worker alive up to 30 s after the response is sent. All model tries for one
  * message share MODEL_BUDGET_MS from the start of the event (Claude alone: 20 s; local alone: LLM_TIMEOUT_MS,
- * capped at 25 s; in "hybrid" the Mac mini gets at most HYBRID_LOCAL_MAX_MS, 9 s, so Gemini keeps ~13 s for two tries).
+ * capped at 25 s; in "hybrid" the Mac mini gets at most HYBRID_LOCAL_MAX_MS, 14 s, and Gemini starts alongside it after
+ * HYBRID_HEDGE_MS, 7 s, or as soon as the Mac mini fails, so Gemini keeps ~16 s for two tries; the first good answer wins).
  * LINE calls time out at 3 s, the Apps Script call at 5 s; the reply, history write and CRM post run in parallel
  * after the model, so the usual worst case is about 23 + 5 s plus a few database round trips.
  */
 export const MAX_MODEL_CALLS = 3;
 export const MODEL_BUDGET_MS = 23_000;
-export const HYBRID_LOCAL_MAX_MS = 9_000;
+export const HYBRID_LOCAL_MAX_MS = 14_000;
+export const HYBRID_HEDGE_MS = 7_000;
 export const FULL_PATH_COST = 19;
 export const MAX_FULL_EVENTS = 2;
 export const MAX_LIGHT_EVENTS = 10;
@@ -128,6 +130,59 @@ function localConfig(env: Env, baseUrl: string, timeoutMs: number) {
 }
 
 /**
+ * "hybrid": the Mac mini first. Gemma is often fast (3-5 s) but sometimes needs 8-10 s, so instead of a hard cut-off
+ * Gemini starts alongside it after HYBRID_HEDGE_MS (or at once if the Mac mini fails) and the first good answer wins;
+ * the other call is aborted, which also stops Ollama through the gate. Still at most MAX_MODEL_CALLS fetches.
+ */
+async function askHybrid(
+  env: Env,
+  baseUrl: string,
+  system: string,
+  history: ChatMessage[],
+  userText: string,
+  consentGiven: boolean,
+  deadline: number,
+): Promise<ConciergeResponse | null> {
+  const stopLocal = new AbortController();
+  const timeout = Math.min(clampTimeout(env.LLM_TIMEOUT_MS), HYBRID_LOCAL_MAX_MS, deadline - Date.now());
+  const local = askLocal({ ...localConfig(env, baseUrl, timeout), signal: stopLocal.signal }, system, history, userText, consentGiven);
+  if (!env.GEMINI_API_KEY) return local;
+
+  let hedgeTimer: ReturnType<typeof setTimeout> | undefined;
+  const hedge = new Promise<"hedge">((resolve) => {
+    hedgeTimer = setTimeout(() => resolve("hedge"), Math.min(HYBRID_HEDGE_MS, Math.max(0, deadline - Date.now())));
+  });
+  const first = await Promise.race([local, hedge]);
+  clearTimeout(hedgeTimer);
+  if (first !== "hedge" && first) return first;
+
+  // The Mac mini failed or is slow: ask Gemini now, keep waiting for the Mac mini if it is still running.
+  console.error(first === "hedge" ? "hybrid_hedge_gemini" : "hybrid_fallback_gemini");
+  const gemini = askGeminiReliable(geminiPlan(env, deadline, MAX_MODEL_CALLS - 1), system, history, userText, consentGiven);
+  if (first === null) return gemini;
+  const winner = await firstAnswer<{ r: ConciergeResponse; by: "local" | "gemini" }>([
+    local.then((r) => (r ? { r, by: "local" } : null)),
+    gemini.then((r) => (r ? { r, by: "gemini" } : null)),
+  ]);
+  if (winner?.by === "gemini") stopLocal.abort();
+  if (winner) console.error(winner.by === "local" ? "hybrid_local_won" : "hybrid_gemini_won");
+  return winner?.r ?? null;
+}
+
+/** Resolves with the first non-null result, or null once all are null. */
+function firstAnswer<T>(tries: Promise<T | null>[]): Promise<T | null> {
+  return new Promise((resolve) => {
+    let left = tries.length;
+    for (const t of tries) {
+      void t.then((v) => {
+        if (v) resolve(v);
+        else if (--left === 0) resolve(null);
+      });
+    }
+  });
+}
+
+/**
  * The AI answer for one message, at most MAX_MODEL_CALLS fetches before `deadline`:
  * "gemini" = Gemini with retry and backup model; "local" = the Mac mini only; "hybrid" = the Mac mini first,
  * Gemini if it is off, slow or wrong; otherwise Claude.
@@ -142,19 +197,14 @@ async function askModel(
 ): Promise<ConciergeResponse | null> {
   const provider = env.LLM_PROVIDER;
   if (provider === "gemini" || provider === "hybrid") {
-    let calls = MAX_MODEL_CALLS;
     if (provider === "hybrid" && env.LLM_BASE_URL) {
-      const timeout = Math.min(clampTimeout(env.LLM_TIMEOUT_MS), HYBRID_LOCAL_MAX_MS, deadline - Date.now());
-      const local = await askLocal(localConfig(env, env.LLM_BASE_URL, timeout), system, history, userText, consentGiven);
-      if (local) return local;
-      console.error("hybrid_fallback_gemini");
-      calls -= 1;
+      return askHybrid(env, env.LLM_BASE_URL, system, history, userText, consentGiven, deadline);
     }
     if (!env.GEMINI_API_KEY) {
       console.error("gemini_not_configured");
       return null;
     }
-    return askGeminiReliable(geminiPlan(env, deadline, calls), system, history, userText, consentGiven);
+    return askGeminiReliable(geminiPlan(env, deadline, MAX_MODEL_CALLS), system, history, userText, consentGiven);
   }
   if (provider === "local") {
     if (!env.LLM_BASE_URL) {

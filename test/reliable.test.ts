@@ -40,7 +40,7 @@ interface Call {
 let calls: Call[];
 
 /** Answers each model call in turn with the next responder; everything else (LINE, Sheet) gets {}. */
-function stubSequence(responders: (() => Response | Promise<Response>)[]) {
+function stubSequence(responders: ((init?: RequestInit) => Response | Promise<Response>)[]) {
   let i = 0;
   vi.stubGlobal(
     "fetch",
@@ -49,7 +49,7 @@ function stubSequence(responders: (() => Response | Promise<Response>)[]) {
       if (url.includes("generativelanguage") || url.includes("/api/chat")) {
         const r = responders[i++];
         if (!r) throw new Error("unexpected model call");
-        return r();
+        return r(init);
       }
       return new Response("{}", { status: 200 });
     }),
@@ -193,6 +193,58 @@ describe("handleEvent with LLM_PROVIDER=hybrid", () => {
     expect(replies().map((c) => (JSON.parse(c.body) as { messages: { text: string }[] }).messages[0]?.text)).toEqual([
       APOLOGY_REPLY,
     ]);
+  });
+
+  // A Mac mini that has not answered yet; it only settles when the Worker aborts the call.
+  const slowLocal = (seen: { aborted: boolean }) => (init?: RequestInit) =>
+    new Promise<Response>((_, reject) => {
+      init?.signal?.addEventListener("abort", () => {
+        seen.aborted = true;
+        reject(new DOMException("aborted", "AbortError"));
+      });
+    });
+
+  it("starts Gemini alongside a slow Mac mini after 7 s and stops the Mac mini when Gemini wins", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+    try {
+      const seen = { aborted: false };
+      stubSequence([slowLocal(seen), ok]);
+      const done = handleEvent(text("E1"), env(), content, Date.now());
+      await vi.advanceTimersByTimeAsync(6_900);
+      expect(modelCalls().map(modelOf)).toEqual(["local"]);
+      await vi.advanceTimersByTimeAsync(200);
+      await done;
+      expect(modelCalls().map(modelOf)).toEqual(["local", "gemini-3.6-flash"]);
+      expect(seen.aborted).toBe(true);
+      expect(console.error).toHaveBeenCalledWith("hybrid_hedge_gemini");
+      expect(console.error).toHaveBeenCalledWith("hybrid_gemini_won");
+      expect(replies()).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("still takes the Mac mini's answer if it finishes first after Gemini started", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+    try {
+      let finishLocal: (r: Response) => void = () => undefined;
+      let finishGemini: (r: Response) => void = () => undefined;
+      stubSequence([
+        () => new Promise<Response>((resolve) => (finishLocal = resolve)),
+        () => new Promise<Response>((resolve) => (finishGemini = resolve)),
+      ]);
+      const done = handleEvent(text("E1"), env(), content, Date.now());
+      await vi.advanceTimersByTimeAsync(8_000);
+      finishLocal(localOk());
+      await vi.advanceTimersByTimeAsync(10);
+      finishGemini(ok());
+      await done;
+      expect(console.error).toHaveBeenCalledWith("hybrid_local_won");
+      expect(replies()).toHaveLength(1);
+      expect(modelCalls().length).toBeLessThanOrEqual(MAX_MODEL_CALLS);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("uses Gemini only when no Mac mini address is set", async () => {
