@@ -94,7 +94,7 @@ wrong; do not weaken or delete a test to make it pass.
 - Gemini 3.x/4 cannot turn thinking off (`thinkingLevel` low is the floor on some models, `minimal` on
   others); `maxOutputTokens` includes thinking tokens, so keep it generous. `thinkingBudget` is the
   older 2.5-series field and must not be sent together with `thinkingLevel`.
-- Local model: all model tries share 23 s per message (`MODEL_BUDGET_MS`); in `hybrid` the Mac mini gets at most 14 s and Gemini starts alongside it after 7 s (`askHybrid`, first good answer wins).
+- Local model: all model tries share 23 s per message (`MODEL_BUDGET_MS`); in `hybrid` the Mac mini gets at most 14 s and Gemini starts alongside it after 9 s (`askHybrid`, first good answer wins).
   Gemma 4 with Ollama's `format` grammar stalls on whitespace in about half of replies, so the JSON is asked for in
   words (`LOCAL_JSON_HINT`) and read from the stream; keep `LLM_FORMAT` off unless a new model is benchmarked with it.
   Check speed on the Mac with `npm run bench:local` after changing the model. Thinking must stay off.

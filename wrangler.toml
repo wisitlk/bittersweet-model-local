@@ -35,7 +35,7 @@ GEMINI_FALLBACK_THINKING = "low"
 # Only used when LLM_PROVIDER is "hybrid" or "local".
 LLM_BASE_URL = ""                          # the trycloudflare.com address printed by mac-mini/start.sh
 LLM_MODEL = "gemma4:e4b"                   # the exact tag shown by `ollama list` on the Mac mini
-LLM_TIMEOUT_MS = "14000"                   # hybrid: Gemma may run 14 s; Gemini starts alongside at 7 s
+LLM_TIMEOUT_MS = "14000"                   # hybrid: Gemma may run 14 s; Gemini starts alongside at 9 s
 # LLM_FORMAT = "on"                        # sends Ollama's JSON grammar; off by default because Gemma stalls with it
 # Only used when LLM_PROVIDER is "anthropic".
 CLAUDE_MODEL = "claude-sonnet-5-5"

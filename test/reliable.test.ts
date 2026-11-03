@@ -204,13 +204,13 @@ describe("handleEvent with LLM_PROVIDER=hybrid", () => {
       });
     });
 
-  it("starts Gemini alongside a slow Mac mini after 7 s and stops the Mac mini when Gemini wins", async () => {
+  it("starts Gemini alongside a slow Mac mini after 9 s and stops the Mac mini when Gemini wins", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
     try {
       const seen = { aborted: false };
       stubSequence([slowLocal(seen), ok]);
       const done = handleEvent(text("E1"), env(), content, Date.now());
-      await vi.advanceTimersByTimeAsync(6_900);
+      await vi.advanceTimersByTimeAsync(8_900);
       expect(modelCalls().map(modelOf)).toEqual(["local"]);
       await vi.advanceTimersByTimeAsync(200);
       await done;
@@ -234,7 +234,7 @@ describe("handleEvent with LLM_PROVIDER=hybrid", () => {
         () => new Promise<Response>((resolve) => (finishGemini = resolve)),
       ]);
       const done = handleEvent(text("E1"), env(), content, Date.now());
-      await vi.advanceTimersByTimeAsync(8_000);
+      await vi.advanceTimersByTimeAsync(10_000);
       finishLocal(localOk());
       await vi.advanceTimersByTimeAsync(10);
       finishGemini(ok());

@@ -9,7 +9,7 @@ Google Gemini is the backup.
 | Part | Where | What it does |
 |---|---|---|
 | LINE chat bot | `POST /webhook`, `src/handler.ts` | Verifies the LINE signature, loads history, consent and the survey, asks the AI model for a JSON answer, replies, saves the turn |
-| AI models | `src/llm.ts`, `src/gemini.ts` | `hybrid`: Gemma 4 E4B on the Mac mini (up to 14 s; Gemini starts alongside after 7 s, first answer wins), then Gemini 3.6 Flash, then 3.1 Flash-Lite, all within 23 s |
+| AI models | `src/llm.ts`, `src/gemini.ts` | `hybrid`: Gemma 4 E4B on the Mac mini (up to 14 s; Gemini starts alongside after 9 s, first answer wins), then Gemini 3.6 Flash, then 3.1 Flash-Lite, all within 23 s |
 | Mac mini link | `mac-mini/` | Ollama app + a gate that only lets through chat requests with two secret headers + a Cloudflare quick tunnel |
 | Bot knowledge | `content/knowledge.md`, `content/system_prompt.md` | Product sheet V0.0.6: 5 scents, 450 THB bottle, 249 THB Sample with 30-day credit, not selling until the Thai FDA notification |
 | Web app (LIFF) | `GET /app/`, `web/app.html`, `src/liff.ts` | LINE Login, sign-up, survey, perfume catalog, demo buy, pre-order, points |
@@ -25,7 +25,7 @@ Google Gemini is the backup.
 flowchart LR
   U[Customer in LINE] --> W[Worker /webhook]
   W -->|signature, dedupe, limits| D[(D1: history, consent, survey)]
-  W --> G{Gemma on Mac mini\nanswer in 7 s?}
+  W --> G{Gemma on Mac mini\nanswer in 9 s?}
   G -->|yes| R[Reply in LINE]
   G -->|no: Gemini joins, first answer wins| F[Gemini Flash, then Flash-Lite]
   F --> R
