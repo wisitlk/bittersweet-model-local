@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { CONSENT_NOTE, RESPONSE_SCHEMA } from "../src/claude";
-import { LOCAL_JSON_HINT, LOCAL_RESPONSE_SCHEMA, MAX_WHITESPACE_RUN } from "../src/llm";
+import { CONSENT_NOTE, isConciergeResponse, RESPONSE_SCHEMA } from "../src/claude";
+import { asJsonTurn, LOCAL_JSON_HINT, LOCAL_RESPONSE_SCHEMA, MAX_WHITESPACE_RUN } from "../src/llm";
 import { handleEvent, type Content } from "../src/handler";
 import {
   askLocal,
@@ -108,6 +108,18 @@ describe("buildLocalRequestBody", () => {
     expect(body.messages.at(-1)).toEqual({ role: "system", content: LOCAL_JSON_HINT });
   });
 
+  it("shows earlier bot replies in the JSON shape when the grammar is off", () => {
+    const history = [
+      { role: "user" as const, content: "a" },
+      { role: "assistant" as const, content: "ตอบ" },
+    ];
+    const body = buildLocalRequestBody("m", "SYS", history, "hi");
+    expect(body.messages[1]).toEqual({ role: "user", content: "a" });
+    const turn = JSON.parse(body.messages[2]?.content ?? "") as { reply: string; handoff: boolean; crm: unknown };
+    expect(turn.reply).toBe("ตอบ");
+    expect(isConciergeResponse(turn)).toBe(true);
+  });
+
   it("keeps the system prompt first and adds the consent note after the user turn", () => {
     const history = [
       { role: "user" as const, content: "a" },
@@ -115,7 +127,7 @@ describe("buildLocalRequestBody", () => {
     ];
     const body = buildLocalRequestBody("m", "SYS", history, "hi", true);
     expect(body.messages[0]).toEqual({ role: "system", content: "SYS" });
-    expect(body.messages.slice(1, 3)).toEqual(history);
+    expect(body.messages.slice(1, 3)).toEqual(history.map(asJsonTurn));
     expect(body.messages.at(-1)).toEqual({ role: "system", content: CONSENT_NOTE });
   });
 });

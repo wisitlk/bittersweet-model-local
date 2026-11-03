@@ -8,6 +8,7 @@
  *     then npm run bench:gemini; optional GEMINI_MODEL, GEMINI_THINKING_LEVEL
  *   Add --raw (local only) to also print Ollama's done_reason, token counts and, when Gemma does not stop by itself,
  *     the end of the text it wrote (askLocal stops reading at the closing brace; --raw reads to the end).
+ *   Add --history to ask each question after one earlier exchange (live traffic mostly has history).
  *   LLM_FORMAT=on npm run bench:local sends Ollama's JSON grammar too (off by default, as in the Worker).
  * Prints only timings and the bot's replies; nothing is sent to LINE or the Sheet.
  */
@@ -33,6 +34,13 @@ const samples = [
   "ผิวแพ้ง่าย ใช้ได้ไหมคะ",
 ];
 
+// --history: each question follows one earlier exchange, as most live messages do (the bot's reply stored as text).
+const history = process.argv.includes("--history")
+  ? [
+      { role: "user" as const, content: "สวัสดีครับ" },
+      { role: "assistant" as const, content: "สวัสดีครับ ยินดีต้อนรับสู่ BitterSweet อยากได้กลิ่นแบบไหนเล่าให้ฟังได้เลยครับ" },
+    ]
+  : [];
 const useGemini = process.argv.includes("--gemini");
 const raw = !useGemini && process.argv.includes("--raw");
 const geminiKey = process.env.GEMINI_API_KEY ?? "";
@@ -54,12 +62,12 @@ const cfg = {
 // HYBRID_LOCAL_MAX_MS before it asks Gemini instead.
 const budgetMs = useGemini ? GEMINI_TIMEOUT_MS : HYBRID_LOCAL_MAX_MS;
 const ask = (text: string) =>
-  useGemini ? askGemini(geminiKey, geminiModel, system, [], text, false, thinking) : askLocal(cfg, system, [], text);
+  useGemini ? askGemini(geminiKey, geminiModel, system, history, text, false, thinking) : askLocal(cfg, system, history, text);
 
 console.log(
   useGemini
     ? `Gemini ${geminiModel} (thinking ${thinking}); Worker budget ${budgetMs / 1000} s per reply\n`
-    : `model ${cfg.model} at ${cfg.baseUrl}${cfg.useFormat ? " (JSON grammar on)" : ""}; Worker budget ${budgetMs / 1000} s per reply\n`,
+    : `model ${cfg.model} at ${cfg.baseUrl}${cfg.useFormat ? " (JSON grammar on)" : ""}${history.length ? " with history" : ""}; Worker budget ${budgetMs / 1000} s per reply\n`,
 );
 // Same request as askLocal, but keeps Ollama's own fields so a "length" stop can be inspected.
 async function rawLocal(text: string): Promise<void> {
@@ -71,7 +79,7 @@ async function rawLocal(text: string): Promise<void> {
   const res = await fetch(`${cfg.baseUrl.replace(/\/+$/, "")}/api/chat`, {
     method: "POST",
     headers,
-    body: JSON.stringify(buildLocalRequestBody(cfg.model, system, [], text, false, cfg.useFormat)),
+    body: JSON.stringify(buildLocalRequestBody(cfg.model, system, history, text, false, cfg.useFormat)),
     signal: AbortSignal.timeout(cfg.timeoutMs),
   });
   // The request streams (NDJSON); read it all, without askLocal's early stop, to see what Gemma would write.

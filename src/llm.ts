@@ -62,6 +62,25 @@ export const LOCAL_JSON_HINT =
   ', "scents_smelled": string, "liked": string, "disliked": string, "preferences": string, ' +
   '"sample_interest": boolean, "preorder_waitlist": boolean, "delete_request": boolean}}';
 
+// D1 stores only the reply text of earlier bot turns. Without the grammar, Gemma copies the shape of those turns and
+// answers in plain text (live 2026-11-03: "Sample ราคาเท่าไหร่" after one earlier turn, 5 of 5 in plain text), so
+// earlier replies are shown to it in the same JSON shape it must write. Flags were not stored, so they read as empty.
+const EMPTY_CRM = {
+  save: false,
+  consent_pdpa: false,
+  segment: "",
+  scents_smelled: "",
+  liked: "",
+  disliked: "",
+  preferences: "",
+  sample_interest: false,
+  preorder_waitlist: false,
+  delete_request: false,
+};
+export function asJsonTurn(m: ChatMessage): ChatMessage {
+  return m.role === "assistant" ? { role: "assistant", content: JSON.stringify({ reply: m.content, handoff: false, crm: EMPTY_CRM }) } : m;
+}
+
 export function buildLocalRequestBody(
   model: string,
   system: string,
@@ -75,7 +94,7 @@ export function buildLocalRequestBody(
     // The system prompt comes first and stays byte-identical, so Ollama can reuse its cached prefix.
     messages: [
       { role: "system", content: system },
-      ...history,
+      ...(useFormat ? history : history.map(asJsonTurn)),
       { role: "user", content: userText },
       ...(useFormat ? [] : [{ role: "system", content: LOCAL_JSON_HINT }]),
       ...(consentGiven ? [{ role: "system", content: CONSENT_NOTE }] : []),
