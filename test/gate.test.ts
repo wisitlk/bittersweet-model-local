@@ -57,6 +57,40 @@ describe("Mac mini gate", () => {
     expect((await fetch(base + "/healthz")).status).toBe(200);
   });
 
+  it("stops the Ollama request when the caller hangs up", async () => {
+    let upstreamClosed!: () => void;
+    const closed = new Promise<void>((r) => (upstreamClosed = r));
+    const slow = http.createServer((req, res) => {
+      req.resume();
+      res.writeHead(200, { "Content-Type": "application/x-ndjson" });
+      const tick = setInterval(() => res.write('{"message":{"content":" "},"done":false}\n'), 20);
+      res.on("close", () => {
+        clearInterval(tick);
+        upstreamClosed();
+      });
+    });
+    await new Promise<void>((r) => slow.listen(0, "127.0.0.1", r));
+    const g = createGate({
+      clientId: ID,
+      clientSecret: SECRET,
+      upstream: `http://127.0.0.1:${(slow.address() as AddressInfo).port}`,
+      log: () => undefined,
+    });
+    await new Promise<void>((r) => g.listen(0, "127.0.0.1", r));
+    const ctrl = new AbortController();
+    const res = await fetch(`http://127.0.0.1:${(g.address() as AddressInfo).port}/api/chat`, {
+      method: "POST",
+      headers: { "CF-Access-Client-Id": ID, "CF-Access-Client-Secret": SECRET },
+      body: "{}",
+      signal: ctrl.signal,
+    });
+    await res.body?.getReader().read();
+    ctrl.abort();
+    await closed; // resolves only if the gate closed its request to the upstream
+    g.close();
+    slow.close();
+  });
+
   it("rejects a body over 256 KB", async () => {
     const res = await fetch(base + "/api/chat", {
       method: "POST",

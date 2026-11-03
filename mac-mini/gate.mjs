@@ -46,7 +46,13 @@ export function createGate({ clientId, clientSecret, upstream, maxConcurrent = 2
         inFlight--;
       }
     };
-    res.on("close", release);
+    // When the Worker gives up (its 9 s cap) it closes the connection; stop Ollama too, so a runaway reply does not keep
+    // the Mac busy and slow down the next customer.
+    let up = null;
+    res.on("close", () => {
+      release();
+      if (up && !res.writableFinished) up.destroy(new Error("client_closed"));
+    });
 
     const chunks = [];
     let size = 0;
@@ -61,7 +67,7 @@ export function createGate({ clientId, clientSecret, upstream, maxConcurrent = 2
     req.on("end", () => {
       if (size > MAX_BODY_BYTES) return;
       const body = Buffer.concat(chunks);
-      const up = http.request(
+      up = http.request(
         target,
         {
           method: "POST",
@@ -76,7 +82,10 @@ export function createGate({ clientId, clientSecret, upstream, maxConcurrent = 2
         },
       );
       up.on("timeout", () => up.destroy(new Error("timeout")));
-      up.on("error", (e) => done(e.message === "timeout" ? 504 : 502));
+      up.on("error", (e) => {
+        if (e.message === "client_closed") return log(`gate client_closed ${Date.now() - started}ms`);
+        done(e.message === "timeout" ? 504 : 502);
+      });
       up.end(body);
     });
   });
@@ -91,5 +100,6 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
     upstream: env.OLLAMA_URL || "http://127.0.0.1:11434",
     maxConcurrent: Number(env.GATE_MAX_CONCURRENT || 2),
     timeoutMs: Number(env.GATE_TIMEOUT_MS || 60_000),
+    log: (line) => console.log(`${new Date().toISOString()} ${line}`),
   }).listen(port, "127.0.0.1", () => console.log(`gate listening on 127.0.0.1:${port}`));
 }
