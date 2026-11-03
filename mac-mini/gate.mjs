@@ -12,6 +12,41 @@ import { pathToFileURL } from "node:url";
 const MAX_BODY_BYTES = 256 * 1024;
 
 const digest = (s) => createHash("sha256").update(s).digest();
+const short = (s) => createHash("sha256").update(s).digest("hex").slice(0, 8);
+
+/**
+ * The shape of a chat request without its text: message count, and short hashes of the system message and of the
+ * first message after it. If `sys` changes between two requests, Ollama cannot reuse its cached prompt at all; if only
+ * `first` changes, the chat history window moved and everything after the system prompt is read again.
+ */
+export function describeRequest(body) {
+  try {
+    const msgs = JSON.parse(body.toString("utf8")).messages;
+    if (!Array.isArray(msgs)) return "shape=unknown";
+    const text = (m) => (typeof m?.content === "string" ? m.content : "");
+    return `msgs=${msgs.length} sys=${short(text(msgs[0]))} first=${short(text(msgs[1]))}`;
+  } catch {
+    return "shape=unknown";
+  }
+}
+
+/**
+ * Ollama's timing numbers from its last stream line (done: true): prompt tokens, how many came from its cache (field
+ * names differ between Ollama versions, so every numeric field naming "cache" is kept) and seconds spent on the prompt.
+ */
+export function describeDone(lastLine) {
+  try {
+    const d = JSON.parse(lastLine);
+    if (!d || d.done !== true) return "";
+    const parts = [`prompt=${d.prompt_eval_count ?? "?"}`];
+    for (const [k, v] of Object.entries(d)) if (/cache/i.test(k) && typeof v === "number") parts.push(`${k}=${v}`);
+    if (typeof d.prompt_eval_duration === "number") parts.push(`prompt_s=${(d.prompt_eval_duration / 1e9).toFixed(2)}`);
+    if (typeof d.eval_count === "number") parts.push(`out=${d.eval_count}`);
+    return " " + parts.join(" ");
+  } catch {
+    return "";
+  }
+}
 const sameSecret = (given, expected) => typeof given === "string" && timingSafeEqual(digest(given), digest(expected));
 
 /** Builds the gate server. upstream is the Ollama base URL, e.g. http://127.0.0.1:11434. */
@@ -52,7 +87,9 @@ export function createGate({ clientId, clientSecret, upstream, maxConcurrent = 2
     // apart from a slow or runaway reply in the log.
     let up = null;
     let firstByte = null;
-    const timing = () => `${Date.now() - started}ms first_byte=${firstByte === null ? "none" : `${firstByte}ms`}`;
+    let shape = "";
+    const timing = () =>
+      `${Date.now() - started}ms first_byte=${firstByte === null ? "none" : `${firstByte}ms`}${shape ? ` ${shape}` : ""}`;
     res.on("close", () => {
       release();
       if (res.writableFinished) return;
@@ -73,6 +110,7 @@ export function createGate({ clientId, clientSecret, upstream, maxConcurrent = 2
     req.on("end", () => {
       if (size > MAX_BODY_BYTES) return;
       const body = Buffer.concat(chunks);
+      shape = describeRequest(body);
       up = http.request(
         target,
         {
@@ -84,10 +122,16 @@ export function createGate({ clientId, clientSecret, upstream, maxConcurrent = 2
         (upRes) => {
           res.writeHead(upRes.statusCode ?? 502, { "Content-Type": upRes.headers["content-type"] ?? "application/json" });
           upRes.once("data", () => (firstByte = Date.now() - started));
+          // Keep only the end of the stream: its last line carries Ollama's token counts and timings.
+          let tail = "";
+          upRes.on("data", (c) => (tail = (tail + c.toString("utf8")).slice(-4096)));
           // After the Worker hangs up, destroying `up` makes upRes emit "error"; the close handler above logged it.
           upRes.on("error", () => undefined);
           upRes.pipe(res);
-          upRes.on("end", () => log(`gate ${upRes.statusCode} ${timing()}`));
+          upRes.on("end", () => {
+            const last = tail.trim().split("\n").pop() ?? "";
+            log(`gate ${upRes.statusCode} ${timing()}${describeDone(last)}`);
+          });
         },
       );
       up.on("timeout", () => up.destroy(new Error("timeout")));

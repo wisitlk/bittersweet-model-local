@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import { createGate } from "../mac-mini/gate.mjs";
+import { createGate, describeDone, describeRequest } from "../mac-mini/gate.mjs";
 
 const ID = "i".repeat(32);
 const SECRET = "s".repeat(64);
@@ -88,9 +88,21 @@ describe("Mac mini gate", () => {
     await res.body?.getReader().read();
     ctrl.abort();
     await closed; // resolves only if the gate closed its request to the upstream
-    expect(lines.some((l) => /^gate client_closed \d+ms first_byte=\d+ms$/.test(l))).toBe(true);
+    expect(lines.some((l) => /^gate client_closed \d+ms first_byte=\d+ms shape=unknown$/.test(l))).toBe(true);
     g.close();
     slow.close();
+  });
+
+  it("logs the request shape and Ollama's prompt numbers, never the text", () => {
+    const body = Buffer.from(JSON.stringify({ messages: [{ role: "system", content: "SECRET PROMPT" }, { role: "user", content: "สวัสดี" }] }));
+    const shape = describeRequest(body);
+    expect(shape).toMatch(/^msgs=2 sys=[0-9a-f]{8} first=[0-9a-f]{8}$/);
+    expect(shape).not.toContain("SECRET");
+    expect(describeRequest(Buffer.from("not json"))).toBe("shape=unknown");
+    expect(
+      describeDone(JSON.stringify({ done: true, prompt_eval_count: 4528, prompt_eval_cached_count: 4361, prompt_eval_duration: 280_000_000, eval_count: 98 })),
+    ).toBe(" prompt=4528 prompt_eval_cached_count=4361 prompt_s=0.28 out=98");
+    expect(describeDone('{"done":false}')).toBe("");
   });
 
   it("rejects a body over 256 KB", async () => {

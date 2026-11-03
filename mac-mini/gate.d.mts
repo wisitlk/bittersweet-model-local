@@ -8,3 +8,6 @@ export function createGate(opts: {
   timeoutMs?: number;
   log?: (line: string) => void;
 }): Server;
+
+export function describeRequest(body: Buffer): string;
+export function describeDone(lastLine: string): string;
