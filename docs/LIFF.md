@@ -83,6 +83,16 @@ address is shown only for paid orders waiting to ship. Everyone else gets 404 fr
 Set it on the computer you deploy from: `npx wrangler secret put ADMIN_LINE_USER_IDS` and paste your LINE user id
 (LINE Developers Console → your LINE Login channel → Basic settings → "Your user ID", starts with U).
 
+### Full-screen dashboard with charts
+
+`https://<worker>/app/admin` opens the same numbers as a dashboard for a computer screen: key numbers, charts by day for
+the last 14 days (Bangkok time) of customer messages, chatters, orders, sales, new members and surveys, the funnel,
+survey groups, age ranges, order status, pre-orders and the 15 newest orders. It is read-only; order status is changed
+in the แอดมิน tab. It logs in with LINE (in a desktop browser LINE Login asks for the LINE password or a QR scan the
+first time). It works because `/app/admin` sits under the LIFF endpoint URL `/app/`; if the endpoint is changed,
+this page must stay under it. The page itself holds no data: it reads `/api/admin`, which answers only the LINE user ids in
+`ADMIN_LINE_USER_IDS`. Chat messages are kept 7 days, so the message charts show 0 before that.
+
 ## Photos
 
 `public/img/` holds the pictures (`hero.jpg` at the top, one per scent, cropped from product sheet V0.0.6). Replace a

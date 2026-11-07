@@ -1,5 +1,6 @@
+import adminHtml from "../web/admin.html";
 import appHtml from "../web/app.html";
-import { adminOrders, adminSummary, isAdmin, setOrderStatus } from "./admin";
+import { adminDaily, adminOrders, adminSummary, isAdmin, setOrderStatus } from "./admin";
 import { findProduct, POINT_RULES, PRODUCTS, type PointReason } from "./catalog";
 import { sendCrmRow, type CrmRow } from "./crm";
 import { errName, isRecord } from "./guards";
@@ -191,6 +192,20 @@ export async function handleWeb(request: Request, env: Env, ctx: ExecutionContex
     });
   }
 
+  // The staff dashboard page. A sub-path of the LIFF endpoint (/app/), so LIFF login works there too, also in a desktop
+  // browser. The page holds no data: it calls /api/admin, which answers only LINE users in ADMIN_LINE_USER_IDS.
+  if ((pathname === "/app/admin" || pathname === "/app/admin/") && request.method === "GET") {
+    if (!env.LIFF_ID) return new Response("Web app not configured (LIFF_ID)", { status: 503 });
+    return new Response(adminHtml.replace("__LIFF_ID__", JSON.stringify(env.LIFF_ID).replace(/</g, "\\u003c")), {
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "no-referrer",
+        "Cache-Control": "no-store",
+      },
+    });
+  }
+
   const isMe = pathname === "/api/me" && request.method === "GET";
   const isWaitlist = pathname === "/api/waitlist" && request.method === "POST";
   const isSurvey = pathname === "/api/survey" && request.method === "POST";
@@ -230,8 +245,8 @@ export async function handleWeb(request: Request, env: Env, ctx: ExecutionContex
     // Staff only: the same 404 as an unknown path, so the dashboard's existence is not advertised.
     if (!isAdmin(env, userId)) return json({ error: "not_found" }, 404);
     if (isAdminGet) {
-      const [stats, orders] = await Promise.all([adminSummary(env.DB, now), adminOrders(env.DB)]);
-      return json({ ...stats, orderList: orders, sales_open: salesOpen(env) });
+      const [stats, daily, orders] = await Promise.all([adminSummary(env.DB, now), adminDaily(env.DB, now), adminOrders(env.DB)]);
+      return json({ ...stats, daily, orderList: orders, sales_open: salesOpen(env) });
     }
     // POST /api/admin/order {ref, status}
     const change = await readJson(request);

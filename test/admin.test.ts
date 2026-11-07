@@ -95,6 +95,28 @@ describe("admin dashboard", () => {
     expect(after.body.sales).toMatchObject({ revenue: 450 });
   });
 
+  it("gives 14 days of counts in Bangkok time, and serves the dashboard page without data", async () => {
+    const env = makeEnv({ ADMIN_LINE_USER_IDS: USER });
+    await call(env, "/api/register", member);
+    const ref = String((await call(env, "/api/checkout", order)).body.ref);
+    await call(env, "/api/admin/order", { ref, status: "paid" });
+    const daily = (await call(env, "/api/admin")).body.daily as { day: string; members: number; orders: number; revenue: number }[];
+    expect(daily).toHaveLength(14);
+    const today = new Date(Date.now() + 7 * 3_600_000).toISOString().slice(0, 10);
+    expect(daily.at(-1)).toMatchObject({ day: today, members: 1, orders: 1, revenue: 450 });
+    expect(daily.slice(0, -1).every((d) => d.orders === 0)).toBe(true);
+
+    const page = await worker.fetch(
+      new Request("https://w.example/app/admin"),
+      env,
+      { waitUntil: () => undefined, passThroughOnException: () => undefined } as unknown as ExecutionContext,
+    );
+    expect(page.status).toBe(200);
+    const html = await page.text();
+    expect(html).toContain('const LIFF_ID = "2001234567-AbCd"');
+    expect(html).not.toContain("สมใจ");
+  });
+
   it("rejects unknown orders and statuses", async () => {
     const env = makeEnv({ ADMIN_LINE_USER_IDS: USER });
     expect((await call(env, "/api/admin/order", { ref: "BS-ZZZZZZ", status: "paid" })).status).toBe(404);

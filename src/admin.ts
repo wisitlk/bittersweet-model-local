@@ -12,7 +12,9 @@ import type { Env } from "./types";
  * paid/shipped orders and a cancelled order's redemption stops counting (BALANCE_SQL in src/loyalty.ts).
  * Customer details are shown to staff only, never logged.
  *
- * Subrequests: verify 1 + rate limit 1 + at most 10 D1 queries.
+ * Subrequests: verify 1 + rate limit 1 + at most 15 D1 queries (summary 10, daily series 4, order list 1).
+ *
+ * The same API feeds the full-screen dashboard at /app/admin (web/admin.html), which adds charts by day.
  */
 
 export function isAdmin(env: Env, userId: string): boolean {
@@ -82,6 +84,50 @@ export async function adminSummary(db: D1Database, now: number) {
     orders,
     sales: { revenue: sales?.revenue ?? 0, discount: sales?.discount ?? 0, points_used: sales?.points_used ?? 0 },
   };
+}
+
+const BANGKOK_OFFSET_MS = 7 * 60 * 60 * 1000;
+export const DAILY_DAYS = 14;
+
+/** "2026-11-07" in Bangkok time for a day number counted from the epoch in Bangkok time. */
+const dayLabel = (day: number) => new Date(day * DAY_MS).toISOString().slice(0, 10);
+
+/**
+ * Counts per day (Bangkok time) for the last DAILY_DAYS days, oldest first, every day present even when zero.
+ * Chat messages are kept only 7 days (RETENTION_MS), so older days show 0 messages.
+ */
+export async function adminDaily(db: D1Database, now: number) {
+  const today = Math.floor((now + BANGKOK_OFFSET_MS) / DAY_MS);
+  const first = today - DAILY_DAYS + 1;
+  const since = first * DAY_MS - BANGKOK_OFFSET_MS;
+  const day = (col: string) => `(${col} + ${BANGKOK_OFFSET_MS}) / ${DAY_MS}`;
+  const byDay = async <T extends { d: number }>(sql: string) =>
+    new Map((await db.prepare(sql).bind(since).all<T>()).results.map((r) => [r.d, r]));
+  const [messages, members, surveys, orders] = await Promise.all([
+    byDay<{ d: number; n: number; u: number }>(
+      `SELECT ${day("created_at")} AS d, COUNT(*) AS n, COUNT(DISTINCT user_id) AS u
+       FROM messages WHERE role = 'user' AND created_at >= ?1 GROUP BY d`,
+    ),
+    byDay<{ d: number; n: number }>(`SELECT ${day("created_at")} AS d, COUNT(*) AS n FROM members WHERE created_at >= ?1 GROUP BY d`),
+    byDay<{ d: number; n: number }>(`SELECT ${day("updated_at")} AS d, COUNT(*) AS n FROM surveys WHERE updated_at >= ?1 GROUP BY d`),
+    byDay<{ d: number; n: number; revenue: number | null }>(
+      `SELECT ${day("created_at")} AS d, COUNT(*) AS n,
+              SUM(CASE WHEN status IN ('paid', 'shipped') THEN total ELSE 0 END) AS revenue
+       FROM orders WHERE created_at >= ?1 GROUP BY d`,
+    ),
+  ]);
+  return Array.from({ length: DAILY_DAYS }, (_, i) => {
+    const d = first + i;
+    return {
+      day: dayLabel(d),
+      messages: messages.get(d)?.n ?? 0,
+      chatters: messages.get(d)?.u ?? 0,
+      members: members.get(d)?.n ?? 0,
+      surveys: surveys.get(d)?.n ?? 0,
+      orders: orders.get(d)?.n ?? 0,
+      revenue: orders.get(d)?.revenue ?? 0,
+    };
+  });
 }
 
 interface OrderRow {

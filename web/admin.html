@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>BitterSweet Dashboard</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f6f2ea; --surface: #fffdf8; --ink: #2c2a25; --muted: #6f6a5f; --line: #e3dccd; --grid: #ece6da;
+    --series-1: #2a78d6; --accent: #4f7a43; --accent-ink: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --bg: #1b1a17; --surface: #25241f; --ink: #eee8dc; --muted: #a9a294; --line: #3a372f; --grid: #33312a;
+      --series-1: #3987e5; --accent: #8fbf7f; --accent-ink: #14200f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.5 "Sukhumvit Set", "Noto Sans Thai", system-ui, sans-serif; }
+  header { max-width: 1200px; margin: 0 auto; padding: 20px 16px 4px; display: flex; flex-wrap: wrap; gap: 8px 16px;
+    align-items: baseline; justify-content: space-between; }
+  h1 { margin: 0; font-size: 22px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  main { max-width: 1200px; margin: 0 auto; padding: 8px 16px 40px; }
+  button { font: inherit; border-radius: 999px; padding: 6px 14px; border: 1px solid var(--line); background: var(--surface);
+    color: var(--ink); cursor: pointer; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 12px; }
+  @media (max-width: 640px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+  .kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+  .kpi .v { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 12px; margin-top: 12px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; min-width: 0; }
+  .card h2 { margin: 0 0 2px; font-size: 16px; }
+  svg { display: block; width: 100%; height: auto; overflow: visible; }
+  svg text { fill: var(--muted); font-size: 13px; font-family: inherit; }
+  .bars { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+  .bar-row { display: grid; grid-template-columns: minmax(90px, 38%) 1fr 48px; gap: 8px; align-items: center; font-size: 14px; }
+  .bar-track { height: 14px; border-radius: 0 4px 4px 0; }
+  .bar-fill { height: 100%; background: var(--series-1); border-radius: 0 4px 4px 0; min-width: 2px; }
+  .bar-row .n { text-align: right; font-variant-numeric: tabular-nums; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 8px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .wide { grid-column: 1 / -1; }
+  .scroll { overflow-x: auto; }
+  #tip { position: fixed; pointer-events: none; background: var(--ink); color: var(--bg); padding: 6px 10px; border-radius: 8px;
+    font-size: 13px; display: none; z-index: 10; white-space: nowrap; }
+  #state { margin-top: 24px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>BitterSweet Dashboard</h1>
+    <div class="muted" id="updated">กำลังโหลด…</div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <span class="muted" id="sales"></span>
+    <button type="button" id="refresh">รีเฟรช</button>
+  </div>
+</header>
+<main>
+  <p id="state" class="muted">กำลังเข้าสู่ระบบด้วย LINE…</p>
+  <div id="dash" class="hidden">
+    <p class="muted" style="margin:4px 0 0">หน้านี้สำหรับทีมงานเท่านั้น มีข้อมูลลูกค้า อย่าแคปหน้าจอส่งต่อ · เปลี่ยนสถานะออเดอร์ได้ที่แท็บแอดมินใน LINE</p>
+    <section class="kpis" id="kpis" aria-label="ตัวเลขหลัก"></section>
+    <section class="grid">
+      <div class="card"><h2>ข้อความจากลูกค้าต่อวัน</h2><div class="muted">เก็บแชตไว้ 7 วัน วันที่เก่ากว่านั้นจึงเป็น 0</div><div id="c-messages"></div></div>
+      <div class="card"><h2>จำนวนคนที่คุยต่อวัน</h2><div class="muted">นับลูกค้าที่ส่งข้อความในวันนั้น</div><div id="c-chatters"></div></div>
+      <div class="card"><h2>ออเดอร์ต่อวัน</h2><div class="muted">ทุกสถานะ</div><div id="c-orders"></div></div>
+      <div class="card"><h2>ยอดขายต่อวัน (บาท)</h2><div class="muted">เฉพาะออเดอร์ที่ชำระแล้วหรือส่งแล้ว</div><div id="c-revenue"></div></div>
+      <div class="card"><h2>สมาชิกใหม่และแบบสอบถามต่อวัน</h2><div class="muted">สมาชิกใหม่</div><div id="c-members"></div><div class="muted">ทำแบบสอบถาม</div><div id="c-surveys"></div></div>
+      <div class="card"><h2>Funnel</h2><div class="muted">คนคุย 7 วัน → ยินยอม PDPA → สมาชิก → แบบสอบถาม → ออเดอร์</div><div class="bars" id="b-funnel"></div></div>
+      <div class="card"><h2>บุคลิกจากแบบสอบถาม</h2><div class="bars" id="b-personality"></div></div>
+      <div class="card"><h2>ช่วงอายุ</h2><div class="bars" id="b-age"></div></div>
+      <div class="card"><h2>สถานะออเดอร์</h2><div class="bars" id="b-status"></div></div>
+      <div class="card"><h2>ลงชื่อรอซื้อ (pre-order)</h2><div class="bars" id="b-waitlist"></div></div>
+      <div class="card wide"><h2>ออเดอร์ล่าสุด</h2><div class="scroll"><table id="t-orders"></table></div></div>
+    </section>
+  </div>
+</main>
+<div id="tip" role="status"></div>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js" charset="utf-8"></script>
+<script>
+const LIFF_ID = __LIFF_ID__;
+const $ = (id) => document.getElementById(id);
+const nf = new Intl.NumberFormat("th-TH");
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const STATUS_TH = { awaiting_payment: "รอชำระ", paid: "ชำระแล้ว รอส่ง", shipped: "ส่งแล้ว", cancelled: "ยกเลิก" };
+const shortDay = (d) => { const [, m, day] = d.split("-"); return `${Number(day)}/${Number(m)}`; };
+
+// One shared tooltip for every chart.
+const tip = $("tip");
+function showTip(e, html) {
+  tip.innerHTML = html;
+  tip.style.display = "block";
+  const x = Math.min(e.clientX + 12, window.innerWidth - tip.offsetWidth - 8);
+  tip.style.left = x + "px";
+  tip.style.top = e.clientY - tip.offsetHeight - 10 + "px";
+}
+const hideTip = () => (tip.style.display = "none");
+
+/** A rounded-up axis maximum with 4 even steps. */
+function niceMax(v) {
+  if (v <= 4) return 4;
+  const step = Math.pow(10, Math.floor(Math.log10(v / 4)));
+  const nice = [1, 2, 2.5, 5, 10].map((m) => m * step).find((s) => s * 4 >= v);
+  return nice * 4;
+}
+
+/** Day-by-day chart: kind "line" or "bar", one series, one y axis starting at 0. */
+function dayChart(el, days, key, kind, unit) {
+  const W = 400, H = 180, L = 40, R = 8, T = 10, B = 24;
+  const vals = days.map((d) => d[key]);
+  const max = niceMax(Math.max(...vals));
+  const iw = W - L - R, ih = H - T - B;
+  const x = (i) => L + (kind === "bar" ? (i + 0.5) * (iw / days.length) : (i * iw) / (days.length - 1));
+  const y = (v) => T + ih - (v / max) * ih;
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(key)} ต่อวัน">`;
+  for (let k = 0; k <= 4; k++) {
+    const v = (max / 4) * k, yy = y(v);
+    s += `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" stroke="var(--grid)" stroke-width="1"/>`;
+    s += `<text x="${L - 6}" y="${yy + 4}" text-anchor="end">${nf.format(v)}</text>`;
+  }
+  days.forEach((d, i) => {
+    if (i % 2 === (days.length - 1) % 2) s += `<text x="${x(i)}" y="${H - 6}" text-anchor="middle">${shortDay(d.day)}</text>`;
+  });
+  if (kind === "bar") {
+    const bw = Math.max(4, iw / days.length - 6);
+    days.forEach((d, i) => {
+      const v = d[key], top = y(v), h = T + ih - top;
+      if (v > 0) {
+        const r = Math.min(4, h, bw / 2);
+        s += `<path d="M${x(i) - bw / 2},${T + ih} V${top + r} Q${x(i) - bw / 2},${top} ${x(i) - bw / 2 + r},${top} H${x(i) + bw / 2 - r} Q${x(i) + bw / 2},${top} ${x(i) + bw / 2},${top + r} V${T + ih} Z" fill="var(--series-1)"/>`;
+      }
+    });
+  } else {
+    s += `<polyline fill="none" stroke="var(--series-1)" stroke-width="2" stroke-linejoin="round" points="${days.map((d, i) => `${x(i)},${y(d[key])}`).join(" ")}"/>`;
+    const last = days.length - 1;
+    s += `<circle cx="${x(last)}" cy="${y(vals[last])}" r="4" fill="var(--series-1)" stroke="var(--surface)" stroke-width="2"/>`;
+  }
+  s += `<line class="cross" x1="0" x2="0" y1="${T}" y2="${T + ih}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3" visibility="hidden"/>`;
+  // Hit areas: one full-height column per day, wider than the mark.
+  days.forEach((d, i) => {
+    const w = iw / (kind === "bar" ? days.length : days.length - 1);
+    s += `<rect class="hit" data-i="${i}" x="${x(i) - w / 2}" y="${T}" width="${w}" height="${ih}" fill="transparent"/>`;
+  });
+  el.innerHTML = s + "</svg>";
+  const cross = el.querySelector(".cross");
+  el.querySelectorAll(".hit").forEach((r) => {
+    const i = Number(r.dataset.i), d = days[i];
+    r.addEventListener("pointermove", (e) => {
+      if (kind === "line") { cross.setAttribute("x1", x(i)); cross.setAttribute("x2", x(i)); cross.setAttribute("visibility", "visible"); }
+      showTip(e, `${shortDay(d.day)} · <b>${nf.format(d[key])}</b> ${unit}`);
+    });
+    r.addEventListener("pointerleave", () => { hideTip(); cross.setAttribute("visibility", "hidden"); });
+  });
+}
+
+/** Horizontal bars with the value written at the end, so no legend is needed. */
+function bars(el, rows) {
+  const max = Math.max(1, ...rows.map((r) => r.n));
+  el.innerHTML = rows.length
+    ? rows.map((r) => `<div class="bar-row"><span>${esc(r.label)}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${(r.n / max) * 100}%"></div></div>
+        <span class="n">${nf.format(r.n)}</span></div>`).join("")
+    : `<div class="muted">ยังไม่มีข้อมูล</div>`;
+}
+
+function render(d) {
+  const f = d.funnel;
+  const revenue7 = d.daily.slice(-7).reduce((a, x) => a + x.revenue, 0);
+  const kpis = [
+    ["คนคุย 7 วัน", f.chatters7d], ["ข้อความ 7 วัน", f.messages7d], ["ยินยอม PDPA", f.consents],
+    ["สมาชิก", f.members], ["ทำแบบสอบถาม", f.surveys], ["ออเดอร์ทั้งหมด", f.orders],
+    ["ยอดขายรวม (บาท)", d.sales.revenue], ["ยอดขาย 7 วัน (บาท)", revenue7],
+  ];
+  $("kpis").innerHTML = kpis.map(([k, v]) => `<div class="kpi"><div class="muted">${k}</div><div class="v">${nf.format(v)}</div></div>`).join("");
+
+  dayChart($("c-messages"), d.daily, "messages", "line", "ข้อความ");
+  dayChart($("c-chatters"), d.daily, "chatters", "line", "คน");
+  dayChart($("c-orders"), d.daily, "orders", "bar", "ออเดอร์");
+  dayChart($("c-revenue"), d.daily, "revenue", "bar", "บาท");
+  dayChart($("c-members"), d.daily, "members", "bar", "คน");
+  dayChart($("c-surveys"), d.daily, "surveys", "bar", "คน");
+
+  bars($("b-funnel"), [
+    { label: "คนคุย 7 วัน", n: f.chatters7d }, { label: "ยินยอม PDPA", n: f.consents }, { label: "สมาชิก", n: f.members },
+    { label: "แบบสอบถาม", n: f.surveys }, { label: "ออเดอร์", n: f.orders },
+  ]);
+  bars($("b-personality"), d.personality.map((p) => ({ label: p.label, n: p.count })));
+  bars($("b-age"), Object.entries(d.ageGroups).sort().map(([k, n]) => ({ label: k + " ปี", n })));
+  bars($("b-status"), Object.keys(STATUS_TH).map((k) => ({ label: STATUS_TH[k], n: d.orders[k] ?? 0 })));
+  bars($("b-waitlist"), d.waitlist.map((w) => ({ label: w.name, n: w.count })));
+
+  const rows = d.orderList.slice(0, 15);
+  $("t-orders").innerHTML = rows.length
+    ? `<tr><th>เลขที่</th><th>วันที่</th><th>สินค้า</th><th>ชื่อ</th><th>สถานะ</th><th style="text-align:right">ยอด</th></tr>` +
+      rows.map((o) => `<tr><td>${esc(o.ref)}</td><td>${new Date(o.created_at).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" })}</td>
+        <td>${esc(o.items)}</td><td>${esc(o.name)}</td><td>${esc(STATUS_TH[o.status] ?? o.status)}</td><td class="num">${nf.format(o.total)}</td></tr>`).join("")
+    : `<tr><td class="muted">ยังไม่มีออเดอร์</td></tr>`;
+
+  $("sales").textContent = d.sales_open ? "ร้านเปิดขายจริง" : "ร้านยังเป็นเดโม";
+  $("updated").textContent = "อัปเดต " + new Date().toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" });
+  $("state").classList.add("hidden");
+  $("dash").classList.remove("hidden");
+}
+
+async function load() {
+  const res = await fetch("/api/admin", { headers: { Authorization: "Bearer " + liff.getIDToken() } });
+  if (res.status === 401) return liff.login({ redirectUri: location.href });
+  if (res.status === 404) {
+    $("state").textContent = "บัญชี LINE นี้ไม่ได้อยู่ในรายชื่อแอดมิน (ADMIN_LINE_USER_IDS)";
+    $("updated").textContent = "";
+    return;
+  }
+  if (!res.ok) {
+    $("state").textContent = "โหลดข้อมูลไม่สำเร็จ ลองกดรีเฟรชอีกครั้ง";
+    return;
+  }
+  render(await res.json());
+}
+
+$("refresh").onclick = () => load().catch(() => ($("state").textContent = "โหลดข้อมูลไม่สำเร็จ"));
+
+(async () => {
+  try {
+    await liff.init({ liffId: LIFF_ID });
+    if (!liff.isLoggedIn()) return liff.login({ redirectUri: location.href });
+    await load();
+  } catch {
+    $("state").textContent = "เปิด LINE Login ไม่สำเร็จ ลองเปิดลิงก์นี้ใหม่อีกครั้ง";
+  }
+})();
+</script>
+</body>
+</html>
