@@ -1,6 +1,10 @@
 import type { ChatMessage } from "./claude";
 
 const HISTORY_TURNS = 10;
+// Once a chat is longer than HISTORY_TURNS, the oldest turns are dropped HISTORY_STEP_TURNS at a time instead of one
+// per message, so the history starts at the same message for several turns in a row (between 6 and 10 turns are
+// sent). A history that started one turn later on every message made the local model re-read all of it each time.
+const HISTORY_STEP_TURNS = 4;
 export const RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -46,6 +50,18 @@ export async function allowUserMessage(
   return count <= limit;
 }
 
+/** Limit on web-app API calls per user (separate from the chat limits). true = allowed. */
+export async function allowWebRequest(
+  db: D1Database,
+  userId: string,
+  limit: number,
+  windowSeconds: number,
+  now: number,
+): Promise<boolean> {
+  const count = await hit(db, `web:${userId}`, now + windowSeconds * 1000, now);
+  return count <= limit;
+}
+
 function utcDay(now: number): string {
   return new Date(now).toISOString().slice(0, 10);
 }
@@ -79,18 +95,35 @@ export async function cleanup(db: D1Database, now: number): Promise<void> {
   ]);
 }
 
-/** Last 10 turns (20 messages), oldest first, always starting with a user message. */
+/**
+ * The recent turns, oldest first, always starting with a user message: all of them up to HISTORY_TURNS, then between
+ * HISTORY_TURNS - HISTORY_STEP_TURNS + 1 and HISTORY_TURNS turns, with a start that moves only every HISTORY_STEP_TURNS.
+ */
 export async function loadHistory(db: D1Database, userId: string): Promise<ChatMessage[]> {
   const { results } = await db
-    .prepare("SELECT role, content FROM messages WHERE user_id = ?1 ORDER BY created_at DESC, id DESC LIMIT ?2")
+    .prepare(
+      `SELECT role, content, (SELECT COUNT(*) FROM messages WHERE user_id = ?1) AS total
+       FROM messages WHERE user_id = ?1 ORDER BY created_at DESC, id DESC LIMIT ?2`,
+    )
     .bind(userId, HISTORY_TURNS * 2)
-    .all<{ role: string; content: string }>();
+    .all<{ role: string; content: string; total: number }>();
+  const total = results[0]?.total ?? 0;
+  const keep = Math.min(results.length, historyLength(total));
   const msgs: ChatMessage[] = [];
-  for (const r of results.reverse()) {
+  for (const r of results.slice(0, keep).reverse()) {
     if (r.role === "user" || r.role === "assistant") msgs.push({ role: r.role, content: r.content });
   }
   while (msgs[0]?.role === "assistant") msgs.shift();
   return msgs;
+}
+
+/** How many of a user's `total` stored messages to send: all up to the cap, then a window whose start moves in steps. */
+export function historyLength(total: number): number {
+  const max = HISTORY_TURNS * 2;
+  if (total <= max) return total;
+  const step = HISTORY_STEP_TURNS * 2;
+  const min = max - step + 2;
+  return Math.min(max, total - Math.floor((total - min) / step) * step);
 }
 
 export async function saveTurn(

@@ -6,6 +6,13 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    // The Mac mini gate runs in Node, not in the Worker.
+    files: ["mac-mini/**/*.mjs"],
+    languageOptions: {
+      globals: { URL: "readonly", Buffer: "readonly", process: "readonly", console: "readonly" },
+    },
+  },
+  {
     rules: {
       "@typescript-eslint/no-explicit-any": "error",
     },

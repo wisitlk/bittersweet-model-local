@@ -1,1 +1,1 @@
-timestamp,line_user_id,segment,scents_smelled,liked,disliked,preferences,discovery_set_interest,preorder_waitlist,consent_pdpa,handoff,delete_request,last_message
+timestamp,line_user_id,segment,scents_smelled,liked,disliked,preferences,sample_interest,preorder_waitlist,consent_pdpa,handoff,delete_request,last_message

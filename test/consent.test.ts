@@ -22,7 +22,7 @@ function claudeJson(crm: Record<string, unknown> = {}, over: Record<string, unkn
       liked: "",
       disliked: "",
       preferences: "",
-      discovery_set_interest: false,
+      sample_interest: false,
       preorder_waitlist: false,
       delete_request: false,
       ...crm,
@@ -103,8 +103,8 @@ describe("crm consent = stored OR current", () => {
   const resp = (crm: Record<string, unknown>) => claudeJson(crm) as unknown as Parameters<typeof buildCrmRow>[2];
 
   it("stored consent makes a pre-order row a full row", () => {
-    const r = buildCrmRow("U1", "pre-order please", resp({ preorder_waitlist: true, liked: "Cilantro", segment: "set_trier" }), new Date(T0), true);
-    expect(r).toMatchObject({ consent_pdpa: true, preorder_waitlist: true, liked: "Cilantro", segment: "set_trier", last_message: "pre-order please" });
+    const r = buildCrmRow("U1", "pre-order please", resp({ preorder_waitlist: true, liked: "Slow Morning", segment: "sample_trier" }), new Date(T0), true);
+    expect(r).toMatchObject({ consent_pdpa: true, preorder_waitlist: true, liked: "Slow Morning", segment: "sample_trier", last_message: "pre-order please" });
   });
 
   it("without stored or current consent a pre-order row is still not sent", () => {
@@ -112,7 +112,7 @@ describe("crm consent = stored OR current", () => {
   });
 
   it("a delete request row never carries message or profile, even with stored consent", () => {
-    const r = buildCrmRow("U1", "delete me", resp({ delete_request: true, liked: "Cilantro", consent_pdpa: true }), new Date(T0), true);
+    const r = buildCrmRow("U1", "delete me", resp({ delete_request: true, liked: "Slow Morning", consent_pdpa: true }), new Date(T0), true);
     expect(r).toMatchObject({ consent_pdpa: false, last_message: "", liked: "", delete_request: true });
   });
 });
@@ -121,7 +121,7 @@ describe("consent across turns (handler)", () => {
   it("consent in turn 1 -> turn 3 pre-order row is sent with profile fields, and the model is told", async () => {
     const e = env();
 
-    claudeOutput = claudeJson({ consent_pdpa: true, liked: "Cilantro" });
+    claudeOutput = claudeJson({ consent_pdpa: true, liked: "Slow Morning" });
     await handleEvent(text("E1"), e, content, T0);
     expect(rows(e.DB, "SELECT user_id FROM consents")).toHaveLength(1);
     expect(urls("anthropic.com")[0]?.body.messages).toEqual([{ role: "user", content: "hi" }]); // nothing stored yet
@@ -134,7 +134,7 @@ describe("consent across turns (handler)", () => {
     expect(urls("sheets.example")).toHaveLength(0);
 
     // turn 3: pre-order, consent flag false in this response, stored consent still applies
-    claudeOutput = claudeJson({ consent_pdpa: false, preorder_waitlist: true, liked: "Cilantro", segment: "set_trier" });
+    claudeOutput = claudeJson({ consent_pdpa: false, preorder_waitlist: true, liked: "Slow Morning", segment: "sample_trier" });
     await handleEvent(text("E3", "U1", "add me to the pre-order list"), e, content, T0 + 2000);
     const posted = urls("sheets.example");
     expect(posted).toHaveLength(1);
@@ -142,8 +142,8 @@ describe("consent across turns (handler)", () => {
       line_user_id: "U1",
       consent_pdpa: true,
       preorder_waitlist: true,
-      liked: "Cilantro",
-      segment: "set_trier",
+      liked: "Slow Morning",
+      segment: "sample_trier",
       last_message: "add me to the pre-order list",
     });
   });
