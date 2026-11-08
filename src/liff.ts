@@ -43,7 +43,10 @@ export async function verifyIdToken(idToken: string, channelId: string): Promise
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (!res.ok) {
-      console.error("liff_verify_failed", res.status);
+      // LINE's error body names the reason (e.g. "IdToken expired."); it never echoes the token.
+      const err: unknown = await res.json().catch(() => null);
+      const reason = isRecord(err) && typeof err.error_description === "string" ? err.error_description : "";
+      console.error("liff_verify_failed", res.status, reason.replace(/[^\w .-]/g, "").slice(0, 60));
       return null;
     }
     const data: unknown = await res.json();

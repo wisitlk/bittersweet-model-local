@@ -306,14 +306,34 @@ function show(...ids) {
 function fail(text) { $("status").textContent = text; show("status"); }
 const baht = (n) => n.toLocaleString("th-TH") + " บาท";
 
+// true when the LIFF ID token is missing or expires within a minute.
+function tokenStale() {
+  const token = liff.getIDToken();
+  if (!token) return true;
+  const decoded = liff.getDecodedIDToken();
+  return !decoded || !decoded.exp || decoded.exp * 1000 < Date.now() + 60_000;
+}
+
+function refreshInClient() {
+  if (sessionStorage.getItem("reloaded")) throw new Error("reopen");
+  sessionStorage.setItem("reloaded", "1");
+  liff.logout();
+  location.reload();
+  throw new Error("login");
+}
+
 async function api(path, options = {}) {
+  // Inside the LINE app liff.login() is not available: drop the old token and reload once, so liff.init logs the
+  // customer in again with a fresh one. If that did not help, ask them to reopen the page from LINE.
+  if (tokenStale() && liff.isInClient()) refreshInClient();
   const res = await fetch(path, {
     ...options,
-    headers: { "Content-Type": "application/json", Authorization: "Bearer " + liff.getIDToken() },
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + (liff.getIDToken() || "") },
   });
   const body = await res.json().catch(() => ({}));
   if (res.status === 401) {
-    // The ID token expired: log in again once to get a fresh one. A second 401 means a setup problem, not expiry.
+    if (liff.isInClient()) refreshInClient();
+    // In a browser: log in again once to get a fresh token. A second 401 means a setup problem, not expiry.
     if (sessionStorage.getItem("relogin")) throw new Error("login_failed");
     sessionStorage.setItem("relogin", "1");
     liff.logout();
@@ -321,6 +341,7 @@ async function api(path, options = {}) {
     throw new Error("login");
   }
   sessionStorage.removeItem("relogin");
+  sessionStorage.removeItem("reloaded");
   if (!res.ok) throw new Error(body.error || "http_" + res.status);
   return body;
 }
@@ -804,7 +825,9 @@ async function main() {
     loaded = true;
   } catch (e) {
     if (e.message === "login" || scent) return;
-    return fail(e.message === "rate_limited" ? "ใช้งานถี่เกินไป รอสักครู่แล้วลองใหม่นะครับ" : "โหลดข้อมูลไม่สำเร็จ ลองใหม่อีกครั้งนะครับ");
+    return fail(e.message === "rate_limited" ? "ใช้งานถี่เกินไป รอสักครู่แล้วลองใหม่นะครับ"
+      : e.message === "reopen" ? "การเข้าสู่ระบบหมดอายุ ปิดหน้านี้แล้วเปิดใหม่จากเมนูใน LINE นะครับ"
+      : "โหลดข้อมูลไม่สำเร็จ ลองใหม่อีกครั้งนะครับ");
   }
   buildSurvey();
   if (scent) {

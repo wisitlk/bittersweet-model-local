@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import worker from "../src/index";
 import { handleEvent } from "../src/handler";
-import { renderApp, waitlistCrmRow } from "../src/liff";
+import { renderApp, verifyIdToken, waitlistCrmRow } from "../src/liff";
 import { PRODUCTS, SAMPLE_PRICE } from "../src/catalog";
 import knowledge from "../content/knowledge.md";
 import { saveConsent } from "../src/store";
@@ -236,5 +236,27 @@ describe("deletion request", () => {
     );
     expect(rows(env.DB, "SELECT * FROM points")).toEqual([]);
     expect(rows(env.DB, "SELECT * FROM waitlist")).toEqual([]);
+  });
+});
+
+describe("verifyIdToken", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("logs LINE's reason for a rejected token without the token itself", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response(JSON.stringify({ error: "invalid_request", error_description: "IdToken expired." }), { status: 400 })));
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    expect(await verifyIdToken("secret.id.token", CHANNEL)).toBeNull();
+    expect(log).toHaveBeenCalledWith("liff_verify_failed", 400, "IdToken expired.");
+    expect(JSON.stringify(log.mock.calls)).not.toContain("secret.id.token");
+    log.mockRestore();
+  });
+
+  it("still logs the status when LINE sends no JSON body", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("Forbidden", { status: 403 })));
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    expect(await verifyIdToken("t", CHANNEL)).toBeNull();
+    expect(log).toHaveBeenCalledWith("liff_verify_failed", 403, "");
+    log.mockRestore();
   });
 });
