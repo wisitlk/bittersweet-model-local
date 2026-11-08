@@ -19,7 +19,7 @@ const valid = {
     liked: "",
     disliked: "",
     preferences: "",
-    discovery_set_interest: false,
+    sample_interest: false,
     preorder_waitlist: false,
     delete_request: false,
   },

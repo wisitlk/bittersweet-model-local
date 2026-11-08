@@ -20,7 +20,7 @@ function claudeJson(over: Record<string, unknown> = {}, crm: Record<string, unkn
       liked: "",
       disliked: "",
       preferences: "",
-      discovery_set_interest: false,
+      sample_interest: false,
       preorder_waitlist: false,
       delete_request: false,
       ...crm,
@@ -151,11 +151,11 @@ describe("handleEvent", () => {
     await handleEvent(text("E1"), e, content, NOW);
     expect(urls("sheets.example")).toHaveLength(0);
 
-    claudeOutput = claudeJson({}, { save: true, consent_pdpa: true, segment: "green_curious", liked: "Cilantro" });
+    claudeOutput = claudeJson({}, { save: true, consent_pdpa: true, segment: "easy_explorer", liked: "Slow Morning" });
     await handleEvent(text("E2"), e, content, NOW + 1000);
     const posted = urls("sheets.example");
     expect(posted).toHaveLength(1);
-    expect(posted[0]?.body).toMatchObject({ token: "shared", line_user_id: "U1", segment: "green_curious", consent_pdpa: true });
+    expect(posted[0]?.body).toMatchObject({ token: "shared", line_user_id: "U1", segment: "easy_explorer", consent_pdpa: true });
   });
 
   it("CRM failure never reaches the customer", async () => {

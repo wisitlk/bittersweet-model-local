@@ -6,6 +6,7 @@ import {
   claimEvent,
   cleanup,
   deleteHistory,
+  historyLength,
   loadHistory,
   RETENTION_MS,
   saveTurn,
@@ -105,13 +106,36 @@ describe("history", () => {
     ]);
   });
 
-  it("keeps only the last 10 turns when reading", async () => {
+  it("keeps at most 10 turns and drops old turns 4 at a time, so the history start stays put", async () => {
     const db = createFakeD1();
-    for (let i = 1; i <= 12; i++) await saveTurn(db, "U1", `q${i}`, `a${i}`, T0 + i);
-    const h = await loadHistory(db, "U1");
-    expect(h).toHaveLength(20);
-    expect(h[0]).toEqual({ role: "user", content: "q3" });
-    expect(h.at(-1)).toEqual({ role: "assistant", content: "a12" });
+    const starts: string[] = [];
+    const lengths: number[] = [];
+    for (let i = 1; i <= 19; i++) {
+      await saveTurn(db, "U1", `q${i}`, `a${i}`, T0 + i);
+      const h = await loadHistory(db, "U1");
+      starts.push(h[0]?.content ?? "");
+      lengths.push(h.length);
+      expect(h[0]?.role).toBe("user");
+      expect(h.at(-1)).toEqual({ role: "assistant", content: `a${i}` });
+    }
+    expect(Math.max(...lengths)).toBe(20);
+    expect(Math.min(...lengths.slice(10))).toBe(14);
+    // Turns 1-10: all kept. Then the start jumps by 4 turns at a time: q5 for turns 11-14, q9 for 15-18, q13 from 19.
+    expect(starts).toEqual([
+      ...Array<string>(10).fill("q1"),
+      ...Array<string>(4).fill("q5"),
+      ...Array<string>(4).fill("q9"),
+      "q13",
+    ]);
+  });
+
+  it("historyLength never sends more than 10 turns or fewer than 7 once past the cap", () => {
+    expect(historyLength(0)).toBe(0);
+    expect(historyLength(20)).toBe(20);
+    for (let n = 21; n < 200; n++) {
+      expect(historyLength(n)).toBeLessThanOrEqual(20);
+      expect(historyLength(n)).toBeGreaterThanOrEqual(13);
+    }
   });
 
   it("keeps users apart and deleteHistory removes only that user", async () => {
