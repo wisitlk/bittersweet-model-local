@@ -3,8 +3,8 @@
 This branch turns the BitterSweet perfume bot into **Aquatic Jewel**, a Thai betta fish (ปลากัด) shop on its own
 LINE Official Account. Same architecture: a Cloudflare Worker answers the LINE chat with Gemini (structured JSON),
 and the LINE web app (LIFF) has sign-up, a fish-keeper survey, points, the shop with PromptPay checkout and the staff
-dashboard. It deploys as a **new Worker** (`aquatic-jewel-line`) with a **new D1 database** (`aquatic_jewel`), so it
-shares nothing with the old BitterSweet Worker.
+dashboard. Decided 2026-11-19: it **reuses the BitterSweet LINE OA** (renamed later by the owner), so it deploys over
+the same Worker (`bittersweet-line-concierge`), D1 database (`bitter_sweet`), LIFF app and Worker secrets.
 
 Content sources: the shop's web projects `wisitlk/betta-fish-web` and `wisitlk/fish-store-betta` (shop name, the five
 demo fish, live-arrival guarantee, WYSIWYG listings).
@@ -21,7 +21,7 @@ demo fish, live-arrival guarantee, WYSIWYG listings).
 | Survey | `src/survey.ts` | Place, tank, fins, keeper type (→ segment + fish), experience, buy intent |
 | CRM segments | `src/claude.ts`, `apps_script/Code.gs` | first_timer, show_lover, bold_collector, desk_keeper, color_hunter, kit_buyer, gift_seeker, repeat_keeper |
 | Web app / dashboard | `web/app.html`, `web/admin.html` | Aquatic Jewel name, blue theme, fish wording; order refs start `AJ-` |
-| Worker / DB | `wrangler.toml` | `aquatic-jewel-line`, D1 `aquatic_jewel`, LIFF ids empty until the new channel exists |
+| Worker / DB | `wrangler.toml` | Unchanged: same Worker, D1, LIFF and webhook URL as BitterSweet |
 
 CRM column names (`scents_smelled`, `sample_interest`) are unchanged so the Sheet and Apps Script stay compatible;
 for the fish shop they mean "fish looked at" and "wants the starter kit".
@@ -29,26 +29,23 @@ for the fish shop they mean "fish looked at" and "wants the starter kit".
 **Placeholders to confirm:** the THB prices of the five fish and the starter kit (390 THB) are examples. Change them
 in `content/knowledge.md`, `src/catalog.ts` (and the test `catalog prices match the knowledge base`) together.
 
-## Deploy (owner, on the Mac)
+## Deploy (owner, on the Mac mini)
 
-1. **LINE Official Account.** In LINE Official Account Manager create a new account "Aquatic Jewel", then Settings →
-   Messaging API → Enable (pick or create a provider). In LINE Developers, open that Messaging API channel:
-   copy nothing into any chat; you will paste the **Channel secret** and a long-lived **Channel access token** at the
-   hidden prompts in step 6. In OA Manager → Response settings: chat off, webhooks on, auto-response off.
-2. **LINE Login channel for the web app**, under the **same provider** (LINE user ids differ between providers, so
-   points and admin ids only match inside one provider). Add a LIFF app: size Full, scopes `openid` + `profile`,
-   endpoint `https://aquatic-jewel-line.<your-workers-subdomain>.workers.dev/app`. Put its LIFF id and the Login
-   channel id into `wrangler.toml` (`LIFF_ID`, `LINE_LOGIN_CHANNEL_ID`; not secrets).
-3. **Database.** `npx wrangler d1 create aquatic_jewel`, paste the printed `database_id` into `wrangler.toml`, then
-   `npx wrangler d1 execute aquatic_jewel --remote --file=schema.sql`.
-4. **Check.** `npm ci && npm run typecheck && npm test && npm run lint`.
-5. **Deploy.** `npx wrangler deploy` (prints the Worker URL).
-6. **Secrets** (each asks at a hidden prompt):
-   `npx wrangler secret put LINE_CHANNEL_SECRET`, `LINE_CHANNEL_ACCESS_TOKEN`, `GEMINI_API_KEY`;
-   later `ADMIN_LINE_USER_IDS` (your LINE user id for this provider), and `PROMPTPAY_ID` only when you want real sales.
-7. **Webhook.** LINE Developers → Messaging API → Webhook URL
-   `https://aquatic-jewel-line.<your-workers-subdomain>.workers.dev/webhook` → Verify → Use webhook on.
-8. **Rich menu** (OA Manager): a button that opens `https://liff.line.me/<LIFF_ID>`.
+Same OA, Worker, database and secrets as before, so no LINE or database setup is needed:
 
-Optional: Google Sheet CRM (SETUP.md step 6, with this branch's `apps_script/Code.gs`) and the Mac mini model
-(`docs/MAC-MINI.md`); without them the bot runs on Gemini only and skips the Sheet.
+1. In the repo folder: `git fetch origin claude/project-thread-rx82e5 && git checkout claude/project-thread-rx82e5`
+   (or merge PR #4 first and use that branch).
+2. `npm ci && npm run typecheck && npm test && npm run lint`.
+3. `npx wrangler deploy` (add the usual `--var LLM_PROVIDER:hybrid --var LLM_BASE_URL:<tunnel>` only if Gemma on the
+   Mac mini is running; otherwise the bot uses Gemini).
+4. In LINE Official Account Manager, rename the account and change its profile picture and greeting when ready;
+   the bot's own greeting text is `content/greeting_th.txt`.
+
+Existing data stays: old BitterSweet surveys are ignored (unknown types), old orders and waitlist rows show their old
+product ids in the dashboard, and members keep their points. The secret `FDA_NOTIFICATION_NO` is no longer read.
+
+### Separate OA later
+To run the fish shop on its own OA instead, change `name`, the D1 block and the two LIFF ids in `wrangler.toml`,
+create the database with `npx wrangler d1 create <name>` + `npx wrangler d1 execute <name> --remote --file=schema.sql`,
+set `LINE_CHANNEL_SECRET`, `LINE_CHANNEL_ACCESS_TOKEN` and `GEMINI_API_KEY` as secrets, and point the new channel's
+webhook at `<worker url>/webhook`. Keep the LINE Login channel under the same provider as the Messaging API channel.
