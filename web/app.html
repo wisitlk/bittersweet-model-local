@@ -3,16 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>BitterSweet</title>
+<title>Aquatic Jewel</title>
 <style>
   :root {
-    --bg: #f6f2ea; --card: #fffdf8; --ink: #2c2a25; --muted: #6f6a5f; --line: #e3dccd;
-    --accent: #4f7a43; --accent-ink: #ffffff; --warn-bg: #fff4d6; --warn-ink: #6b5200;
+    --bg: #eef5f8; --card: #ffffff; --ink: #14303d; --muted: #5b7380; --line: #d3e2ea;
+    --accent: #1f6f94; --accent-ink: #ffffff; --warn-bg: #fff4d6; --warn-ink: #6b5200;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #1b1a17; --card: #25241f; --ink: #eee8dc; --muted: #a9a294; --line: #3a372f;
-      --accent: #8fbf7f; --accent-ink: #14200f; --warn-bg: #3a3218; --warn-ink: #f2dc96;
+      --bg: #0d1a21; --card: #15262f; --ink: #e3f1f7; --muted: #94adb9; --line: #26404d;
+      --accent: #5fc0e8; --accent-ink: #062030; --warn-bg: #3a3218; --warn-ink: #f2dc96;
     }
   }
   * { box-sizing: border-box; }
@@ -92,13 +92,13 @@
 </head>
 <body>
 <header>
-  <h1>BitterSweet</h1>
-  <p class="tag">You wear it for you first. · <span id="hello"></span></p>
-  <img class="hero" src="/img/hero.jpg" alt="น้ำหอม BitterSweet ทั้ง 5 กลิ่น">
+  <h1>Aquatic Jewel</h1>
+  <p class="tag">ปลากัดไทยคัดตัว · <span id="hello"></span></p>
+  <img class="hero" src="/img/hero.jpg" alt="ปลากัดไทยของร้าน Aquatic Jewel">
 </header>
 <nav class="hidden" id="tabs">
   <button id="tab-survey" aria-selected="false">แบบสอบถาม</button>
-  <button id="tab-shop" aria-selected="true">น้ำหอม</button>
+  <button id="tab-shop" aria-selected="true">ปลากัด</button>
   <button id="tab-points" aria-selected="false">คะแนนสะสม</button>
   <button id="tab-admin" aria-selected="false" class="hidden">แอดมิน</button>
 </nav>
@@ -113,24 +113,24 @@
   </section>
 
   <section id="shop" class="hidden">
-    <p class="notice" id="sales-notice">ตอนนี้ยังไม่เปิดขาย เพราะรอเลขจดแจ้ง อย. อยู่ ปุ่ม "ซื้อ" เป็นเดโมให้ลองดูขั้นตอน
+    <p class="notice" id="sales-notice">ตอนนี้ยังไม่เปิดขายจริง ปุ่ม "ซื้อ" เป็นเดโมให้ลองดูขั้นตอน
       ไม่มีการเก็บเงินและไม่บันทึกที่อยู่ ลงชื่อ pre-order ไว้ได้ เราจะแจ้งใน LINE เมื่อเปิดขาย</p>
     <div class="card"><div class="body">
       <strong>ราคา</strong>
       <ul class="plain">
-        <li><span>ขวด 10 ml · Eau de Parfum</span><span>450 บาท</span></li>
-        <li><span>Sample 5 ml · กลิ่นเดียว</span><span>249 บาท</span></li>
+        <li><span>ปลากัดคัดตัว</span><span>ราคาตามตัว</span></li>
+        <li><span>ชุดเริ่มต้นเลี้ยง (ซื้อพร้อมปลา)</span><span>+<span id="kit-price"></span> บาท</span></li>
       </ul>
-      <p class="muted" style="margin:8px 0 0">ซื้อ Sample แล้วกลับมาซื้อขวด 10 ml ภายใน 30 วัน หักคืนค่า Sample 249 บาท จ่ายเพิ่มเพียง 201 บาท</p>
+      <p class="muted" style="margin:8px 0 0">ชุดเริ่มต้น: ตู้ 5 ลิตร อาหารเม็ด น้ำยาปรับสภาพน้ำ ใบหูกวาง · ได้ปลาตัวที่เห็นในรูป รับประกันปลาถึงมือมีชีวิต</p>
     </div></div>
     <div class="card"><div class="body">
-      <strong>เลือกกลิ่นไม่ถูก ดูจากแบบนี้</strong>
+      <strong>เลือกปลาไม่ถูก ดูจากแบบนี้</strong>
       <ul class="plain">
-        <li><span>ใส่ไปทำงานทุกวัน</span><span>Slow Morning</span></li>
-        <li><span>วันพิเศษ อยากให้คนรอบตัวทัก</span><span>Self Toast</span></li>
-        <li><span>กลิ่นตัวสะอาดแบบเพิ่งอาบน้ำ</span><span>Long Bath</span></li>
-        <li><span>กลิ่นอุ่นๆ กลิ่นไม้ วันอยู่บ้านหรือหน้าฝน</span><span>Stay In</span></li>
-        <li><span>เพิ่งเริ่มใช้น้ำหอม หรือชอบผลไม้เบาๆ</span><span>Tea Break</span></li>
+        <li><span>เลี้ยงปลากัดตัวแรก อยากเลี้ยงง่าย</span><span>Blue Rim Plakat</span></li>
+        <li><span>ชอบหางยาวพลิ้วแบบปลาโชว์</span><span>Red Dragon Halfmoon</span></li>
+        <li><span>ชอบปลาสีเข้ม ดุดัน</span><span>Black Samurai</span></li>
+        <li><span>ปลาตัวเล็กสีสวยไว้บนโต๊ะ</span><span>Galaxy Koi</span></li>
+        <li><span>ชอบสีแปลก ลายไม่ซ้ำใคร</span><span>Nemo Candy</span></li>
       </ul>
     </div></div>
     <div id="products"></div>
@@ -143,14 +143,14 @@
         <p class="scent-no" id="scent-no"></p>
         <h2 class="scent-name" id="scent-name"></h2>
         <p class="scent-tag" id="scent-tag"></p>
-        <h3>กลิ่นที่ได้</h3><p id="scent-smells"></p>
-        <h3>ฉีดแล้วรู้สึก</h3><p id="scent-feel"></p>
+        <h3>หน้าตาเป็นแบบไหน</h3><p id="scent-smells"></p>
+        <h3>ดูแล้วรู้สึก</h3><p id="scent-feel"></p>
         <h3>เหมาะกับใคร</h3><ul id="scent-suits"></ul>
-        <h3>ใช้ตอนไหน</h3><p id="scent-when"></p>
-        <p style="margin-top:16px"><strong>ขวด 10 ml 450 บาท · Sample 5 ml 249 บาท</strong></p>
-        <p class="muted" style="margin-top:4px">ซื้อ Sample แล้วกลับมาซื้อขวด 10 ml ภายใน 30 วัน หักคืนค่า Sample 249 บาท</p>
+        <h3>การดูแล</h3><p id="scent-when"></p>
+        <p style="margin-top:16px"><strong id="scent-price"></strong></p>
+        <p class="muted" style="margin-top:4px">ไม่มีตู้? ซื้อพร้อมชุดเริ่มต้นเลี้ยงได้ตอนกดซื้อ</p>
         <button class="btn" id="scent-buy"></button>
-        <button class="btn ghost" id="scent-all">ดูทั้ง 5 กลิ่น</button>
+        <button class="btn ghost" id="scent-all">ดูปลาทั้งหมด</button>
       </div>
     </div>
   </section>
@@ -158,7 +158,7 @@
   <section id="register" class="hidden">
     <form class="card" id="register-form" novalidate><div class="body">
       <img class="avatar hidden" id="avatar" alt="">
-      <p style="text-align:center;margin:0"><strong>สมัครสมาชิก BitterSweet</strong></p>
+      <p style="text-align:center;margin:0"><strong>สมัครสมาชิก Aquatic Jewel</strong></p>
       <p class="muted" style="text-align:center;margin:4px 0 0">กรุณากรอกข้อมูลจริง เพื่อใช้ยืนยันการรับสิทธิพิเศษ (+50 คะแนน)</p>
       <label class="field"><span>ชื่อ *</span><input id="r-first" autocomplete="given-name" maxlength="60" required></label>
       <label class="field"><span>นามสกุล *</span><input id="r-last" autocomplete="family-name" maxlength="60" required></label>
@@ -167,7 +167,7 @@
       <label class="field"><span>อายุ (ปี) *</span><input id="r-age" type="number" inputmode="numeric" required></label>
       <label class="consent">
         <input type="checkbox" id="r-consent">
-        <span>ยอมรับเงื่อนไขและข้อตกลง และยินยอมให้ BitterSweet เก็บชื่อ นามสกุล เบอร์โทร อายุ และ LINE user ID
+        <span>ยอมรับเงื่อนไขและข้อตกลง และยินยอมให้ Aquatic Jewel เก็บชื่อ นามสกุล เบอร์โทร อายุ และ LINE user ID
           เพื่อดูแลสมาชิก แจ้งข่าวและสิทธิพิเศษ ตาม PDPA ไม่ส่งต่อให้ผู้อื่น ขอลบได้ทุกเมื่อโดยพิมพ์ "ลบข้อมูล" ในแชท</span>
       </label>
       <label class="consent hidden" id="r-guardian-row">
@@ -181,16 +181,16 @@
 
   <section id="survey" class="hidden">
     <div class="card hidden" id="survey-result"><div class="body">
-      <div class="muted">บุคลิกกลิ่นของคุณ</div>
+      <div class="muted">สายเลี้ยงปลาของคุณ</div>
       <div class="result-type" id="result-type"></div>
       <div class="muted" id="result-label"></div>
-      <p style="margin:10px 0 0">กลิ่นที่น่าจะเข้ากับคุณ: <strong id="result-scent"></strong></p>
-      <p class="muted" style="margin:6px 0 0">ถามต่อในแชท LINE ได้เลย Scent Concierge จะใช้คำตอบนี้ช่วยแนะนำ</p>
+      <p style="margin:10px 0 0">ปลาที่น่าจะเข้ากับคุณ: <strong id="result-scent"></strong></p>
+      <p class="muted" style="margin:6px 0 0">ถามต่อในแชท LINE ได้เลย ผู้ช่วย AI ของร้านจะใช้คำตอบนี้ช่วยแนะนำ</p>
       <button class="btn ghost" id="survey-again">ทำแบบสอบถามใหม่</button>
     </div></div>
     <form class="card" id="survey-form"><div class="body">
-      <strong>แบบสอบถามกลิ่น (1 นาที)</strong>
-      <p class="muted" style="margin:4px 0 0">ตอบ 6 ข้อ แล้วเราจะบอกบุคลิกกลิ่นและกลิ่นที่น่าจะเข้ากับคุณ (+30 คะแนน)</p>
+      <strong>แบบสอบถามสายเลี้ยงปลา (1 นาที)</strong>
+      <p class="muted" style="margin:4px 0 0">ตอบ 6 ข้อ แล้วเราจะบอกสายเลี้ยงของคุณและปลาที่น่าจะเข้ากับคุณ (+30 คะแนน)</p>
       <div id="questions"></div>
       <button class="btn" id="survey-submit" type="submit" disabled>ดูผล</button>
     </div></form>
@@ -267,13 +267,13 @@
       <strong>ชำระเงินด้วย PromptPay</strong>
       <p style="margin:6px 0 0">เลขที่คำสั่งซื้อ <strong id="pay-ref"></strong> · ยอด <strong id="pay-total"></strong>
         <span class="muted" id="pay-discount"></span></p>
-      <div id="pay-demo" class="notice" style="margin-top:10px">โหมดเดโม: ยังไม่เปิดขายเพราะรอเลขจดแจ้ง อย.
+      <div id="pay-demo" class="notice" style="margin-top:10px">โหมดเดโม: ร้านยังไม่ได้ตั้งค่า PromptPay
         จึงไม่มี QR ให้โอน ไม่มีการเก็บเงิน และไม่ได้บันทึกที่อยู่ เมื่อเปิดขายจริง หน้านี้จะแสดง QR PromptPay
         ให้สแกนจ่าย แล้วส่งสลิปในแชท LINE</div>
       <div id="pay-real" class="hidden">
         <div id="pay-qr" style="display:flex;justify-content:center;margin-top:10px"></div>
         <p class="muted" style="margin:6px 0 0">สแกนด้วยแอปธนาคาร แล้วส่งสลิปพร้อมเลขที่คำสั่งซื้อในแชท LINE
-          ร้านจะยืนยันและแจ้งค่าส่งก่อนจัดส่ง · เลขจดแจ้ง อย. <span id="pay-fda"></span></p>
+          ร้านจะยืนยันและแจ้งค่าส่งก่อนจัดส่ง</p>
       </div>
     </div>
     <button class="btn ghost" type="button" id="buy-close">ปิด</button>
@@ -285,7 +285,7 @@
   <p class="muted" style="margin:6px 0 0">ลงชื่อรับแจ้งเมื่อเปิดขาย ยังไม่มีการสั่งซื้อหรือชำระเงิน</p>
   <label class="consent" id="consent-row">
     <input type="checkbox" id="consent">
-    <span>ยินยอมให้ BitterSweet เก็บ LINE user ID และกลิ่นที่สนใจ เพื่อแจ้งเมื่อเปิดขาย ตาม PDPA
+    <span>ยินยอมให้ Aquatic Jewel เก็บ LINE user ID และปลาที่สนใจ เพื่อแจ้งเมื่อเปิดขาย ตาม PDPA
       ขอลบได้ทุกเมื่อโดยพิมพ์ "ลบข้อมูล" ในแชท</span>
   </label>
   <button class="btn" id="confirm-ok" disabled>ยืนยันลงชื่อ pre-order</button>
@@ -297,6 +297,7 @@
 const CONFIG = __APP_CONFIG__;
 const $ = (id) => document.getElementById(id);
 $("sales-notice").classList.toggle("hidden", CONFIG.sales); // the demo notice only while not selling
+$("kit-price").textContent = String(CONFIG.variants.sample.extra);
 let state = { points: 0, ledger: [], waitlist: [], consent: false, survey: null, member: null };
 let pending = null;
 
@@ -356,7 +357,7 @@ function renderProducts() {
     card.innerHTML = `<div class="photo"></div><div class="body" style="flex:1">
       <div class="row"><strong class="name"></strong><span class="price"></span></div>
       <div class="muted size"></div><p class="blurb" style="margin:8px 0 0"></p>
-      <button class="link more" style="margin-top:6px">ดูรายละเอียดกลิ่น</button>
+      <button class="link more" style="margin-top:6px">ดูรายละเอียดปลา</button>
       <button class="btn buy"></button></div>`;
     const photo = card.querySelector(".photo");
     photo.style.backgroundColor = p.color;
@@ -558,7 +559,7 @@ let buying = null;
 function buyPrice() {
   const v = picked("variant");
   const qty = Math.max(1, Math.min(5, Math.floor(Number($("buy-qty").value) || 1)));
-  const subtotal = v ? CONFIG.variants[v].price * qty : 0;
+  const subtotal = v && buying ? (buying.price + CONFIG.variants[v].extra) * qty : 0;
   const r = CONFIG.redeem[picked("redeem")];
   const discount = r ? Math.round((subtotal * r.percent) / 100) : 0;
   return { subtotal, discount, total: subtotal - discount };
@@ -575,7 +576,7 @@ function openBuy(p) {
   $("buy-title").textContent = p.name;
   const box = $("buy-variants");
   box.textContent = "";
-  for (const [id, v] of Object.entries(CONFIG.variants)) box.appendChild(choice("variant", id, v.label + " · " + baht(v.price)));
+  for (const [id, v] of Object.entries(CONFIG.variants)) box.appendChild(choice("variant", id, v.label + " · " + baht(p.price + v.extra)));
   box.querySelector("input").checked = true;
   const redeem = $("buy-redeem");
   redeem.textContent = "";
@@ -629,7 +630,6 @@ $("buy-form").onsubmit = async (e) => {
     $("pay-demo").classList.toggle("hidden", !res.demo);
     $("pay-real").classList.toggle("hidden", res.demo);
     if (!res.demo) {
-      $("pay-fda").textContent = res.fda;
       await showQr(res.promptpay);
     }
     buyStep(3);
@@ -679,7 +679,7 @@ function findScent(id) {
 function openScent(p) {
   const d = p.detail;
   $("scent-photo").src = p.image || "";
-  $("scent-photo").alt = "ขวดน้ำหอม " + p.name;
+  $("scent-photo").alt = "ปลากัด " + p.name;
   $("scent-photo").classList.toggle("hidden", !p.image);
   $("scent-no").textContent = d.number.toUpperCase();
   $("scent-name").textContent = p.name;
@@ -687,6 +687,7 @@ function openScent(p) {
   $("scent-smells").textContent = d.smells;
   $("scent-feel").textContent = d.feel;
   $("scent-when").textContent = d.when;
+  $("scent-price").textContent = baht(p.price) + " · " + d.number;
   const ul = $("scent-suits");
   ul.textContent = "";
   for (const s of d.suits) { const li = document.createElement("li"); li.textContent = s; ul.appendChild(li); }

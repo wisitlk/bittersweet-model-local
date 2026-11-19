@@ -5,15 +5,14 @@ const API_URL = "https://api.anthropic.com/v1/messages";
 export const CLAUDE_TIMEOUT_MS = 20_000;
 const SEGMENTS = [
   "",
-  "calm_planner",
-  "social_spark",
-  "self_care_ritualist",
-  "cozy_homebody",
-  "easy_explorer",
-  "booth_smeller",
-  "sample_trier",
+  "first_timer",
+  "show_lover",
+  "bold_collector",
+  "desk_keeper",
+  "color_hunter",
+  "kit_buyer",
   "gift_seeker",
-  "repeat_wearer",
+  "repeat_keeper",
 ] as const;
 
 export interface CrmFields {
@@ -43,7 +42,7 @@ export const RESPONSE_SCHEMA = {
   type: "object",
   properties: {
     reply: { type: "string", description: "Text sent to the customer on LINE. Thai by default, short, no markdown." },
-    handoff: { type: "boolean", description: "True if the human perfumer must follow up." },
+    handoff: { type: "boolean", description: "True if a human staff member must follow up." },
     crm: {
       type: "object",
       properties: {

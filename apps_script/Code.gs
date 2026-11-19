@@ -1,5 +1,5 @@
 /**
- * BitterSweet CRM receiver (Google Apps Script web app).
+ * Aquatic Jewel CRM receiver (Google Apps Script web app).
  * Bound to a Google Sheet: the Worker POSTs one JSON row here, this script appends it to the "CRM" sheet.
  * A delete_request instead deletes every row of that LINE user from the CRM sheet.
  *
@@ -7,14 +7,14 @@
  * The shared secret is NOT in this file: set the script property SHARED_TOKEN (Project Settings -> Script properties).
  */
 
-// Optional: an email address that gets a one-line alert when a customer needs the perfumer (handoff).
+// Optional: an email address that gets a one-line alert when a customer needs the shop staff (handoff).
 // Leave empty to turn alerts off.
 var NOTIFY_EMAIL = '';
 
 var SHEET_NAME = 'CRM';
 var MIN_TOKEN_LENGTH = 32;
-var SEGMENTS = ['', 'calm_planner', 'social_spark', 'self_care_ritualist', 'cozy_homebody', 'easy_explorer',
-  'booth_smeller', 'sample_trier', 'gift_seeker', 'repeat_wearer'];
+var SEGMENTS = ['', 'first_timer', 'show_lover', 'bold_collector', 'desk_keeper', 'color_hunter',
+  'kit_buyer', 'gift_seeker', 'repeat_keeper'];
 var BOOLEAN_FIELDS = ['sample_interest', 'preorder_waitlist', 'consent_pdpa', 'handoff', 'delete_request'];
 var STRING_FIELDS = ['scents_smelled', 'liked', 'disliked', 'preferences', 'last_message'];
 var MAX_FIELD_LENGTH = 500;
@@ -61,7 +61,7 @@ function doPost(e) {
   if (data.handoff === true && NOTIFY_EMAIL && !alertedToday_(data.line_user_id)) {
     MailApp.sendEmail(
       NOTIFY_EMAIL,
-      'BitterSweet: customer needs the perfumer',
+      'Aquatic Jewel: customer needs the shop staff',
       'Handoff requested by LINE user ' + data.line_user_id + ' at ' + data.timestamp + '. See the CRM sheet.'
     );
   }

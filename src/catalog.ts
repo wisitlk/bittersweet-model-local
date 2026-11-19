@@ -9,138 +9,118 @@ export interface Product {
   price: number; // THB
   blurb: string; // Thai, customer-facing
   color: string; // card background, shown behind (or instead of) the photo
-  image?: string; // a file in public/, e.g. "/img/fresh_leaf.jpg"; without one the card shows `color`
-  detail: ScentDetail; // the scent's own page (liff.line.me/<LIFF_ID>?scent=<id>), from the product sheet PDF
+  image?: string; // a file in public/, e.g. "/img/red_dragon.jpg"; without one the card shows `color`
+  detail: ScentDetail; // the fish's own page (liff.line.me/<LIFF_ID>?scent=<id>)
 }
 
-/** The product sheet's page for one scent (ข้อมูลสินค้า BitterSweet V0.0.6, 2026-10-28). Thai, customer-facing. */
+/** One fish's own page. Field names are kept from the perfume shop's product sheet; Thai, customer-facing. */
 export interface ScentDetail {
-  number: string; // "No. 01"; shown on the web page only, never in the chat
+  number: string; // the shop's code, e.g. "BF-001"; shown on the web page only
   tagline: string;
-  smells: string; // กลิ่นที่ได้
-  feel: string; // ฉีดแล้วรู้สึก
+  smells: string; // หน้าตาเป็นแบบไหน
+  feel: string; // ดูแล้วให้ความรู้สึก
   suits: readonly string[]; // เหมาะกับใคร
-  when: string; // ใช้ตอนไหน
+  when: string; // การดูแล
 }
 
 export const PRODUCTS: readonly Product[] = [
   {
-    id: "slow_morning",
-    image: "/img/slow_morning.jpg",
-    name: "Slow Morning",
-    size: "10 ml · Sample 5 ml 249 บาท",
+    id: "red_dragon",
+    image: "/img/red_dragon.jpg",
+    name: "Red Dragon Halfmoon",
+    size: "ตัวผู้ · Halfmoon หางยาว",
     price: 450,
-    blurb: "No. 01 · ชาเขียว นุ่ม สะอาด เหมาะกับใส่ไปทำงานทุกวัน",
-    color: "#a9b98f",
+    blurb: "หางยาวกางเต็มครึ่งวงกลม ตัวแดงเงาเกล็ดมังกร เหมาะเป็นปลาโชว์บนโต๊ะ",
+    color: "#c0392b",
     detail: {
-      number: "No. 01",
-      tagline: "เช้าที่ไม่ต้องรีบไปไหน",
-      smells: "ชาเขียวมัทฉะนุ่มๆ เหมือนถ้วยชาอุ่นที่ถือไว้สองมือ ตามด้วยกลิ่นไม้อ่อนๆ ที่สะอาด ไม่ฉุน",
-      feel: "สงบ ใจเย็น เหมือนได้เริ่มวันในจังหวะของตัวเอง",
+      number: "BF-001",
+      tagline: "ปลาโชว์หางพลิ้ว สายประกวด",
+      smells: "หางยาวแบบ Halfmoon กางได้ 180 องศาเวลาพองตัว ลำตัวแดงเข้มมีเกล็ดเงาแบบเกล็ดมังกร",
+      feel: "สง่า โดดเด่น เป็นจุดสนใจของมุมที่วาง",
       suits: [
-        "คนที่ชอบกลิ่นสะอาด เรียบ ไม่ดังเกินคนข้างๆ",
-        "คนชอบชาเขียวและบรรยากาศคาเฟ่ตอนเช้า",
-        "คนทำงานออฟฟิศที่อยากได้กลิ่นใส่ทุกวันโดยไม่ต้องคิด",
+        "คนที่ชอบปลาหางยาวสวยแบบปลาประกวด",
+        "คนที่อยากได้ปลาตัวเดียวเป็นจุดเด่นบนโต๊ะหรือชั้นวาง",
+        "คนที่ดูแลตู้ได้สม่ำเสมอ",
       ],
-      when: "ตอนเช้าก่อนออกจากบ้าน วันทำงาน วันที่อยากให้ตัวเองใจเย็นลง",
+      when: "ใช้ตู้ 5 ลิตรขึ้นไป น้ำไหลเบาๆ ไม่ใส่ของตกแต่งคม เพราะหางยาวขาดง่าย",
     },
   },
   {
-    id: "self_toast",
-    image: "/img/self_toast.jpg",
-    name: "Self Toast",
-    size: "10 ml · Sample 5 ml 249 บาท",
-    price: 450,
-    blurb: "No. 02 · ซิตรัส ดอกไม้ขาว มีประกาย เหมาะกับวันพิเศษ นัดเพื่อน ไปเดต",
-    color: "#e0c48a",
+    id: "blue_rim",
+    name: "Blue Rim Plakat",
+    size: "ตัวผู้ · Plakat หางสั้น",
+    price: 350,
+    blurb: "หางสั้น ว่ายไว ขอบครีบสีฟ้า แข็งแรง เหมาะกับคนเพิ่งเริ่มเลี้ยง",
+    color: "#2e6fa7",
     detail: {
-      number: "No. 02",
-      tagline: "ชนแก้วให้ตัวเอง ไม่ต้องมีเหตุผล",
-      smells: "ซิตรัสสดซ่าเหมือนเปิดขวดแชมเปญ ตามด้วยดอกไม้ขาวกับกุหลาบ ปิดท้ายด้วยแอมเบอร์อุ่นๆ",
-      feel: "สดใส มีชีวิตชีวา ภูมิใจในตัวเอง",
-      suits: [
-        "คนที่ชอบกลิ่นสดใสมีประกาย อยากให้คนรอบตัวได้กลิ่นบ้าง",
-        "คนที่อยากฉลองให้ตัวเองในวันธรรมดา",
-        "คนชอบดอกไม้แต่ไม่อยากได้กลิ่นดอกไม้ที่หนักเกินไป",
-      ],
-      when: "วันที่มีเรื่องดีใจ นัดเพื่อน ไปเดต งานเลี้ยงเล็กๆ ช่วงเย็นถึงกลางคืน",
+      number: "BF-002",
+      tagline: "ปลากัดตัวแรกที่เลี้ยงง่าย",
+      smells: "ปลากัดหางสั้น (Plakat) ว่ายเร็ว ขอบครีบสีฟ้าตัดกับลำตัว",
+      feel: "ปราดเปรียว มีนิสัย ชอบว่ายมาทักคนเลี้ยง",
+      suits: ["คนที่เพิ่งเริ่มเลี้ยงปลากัดตัวแรก", "คนที่ชอบปลาว่ายไว แอคทีฟ", "คนที่ยังไม่มีตู้ (ซื้อพร้อมชุดเริ่มต้นได้)"],
+      when: "ตู้ 5 ลิตรขึ้นไป เปลี่ยนน้ำทุกสัปดาห์",
     },
   },
   {
-    id: "long_bath",
-    image: "/img/long_bath.jpg",
-    name: "Long Bath",
-    size: "10 ml · Sample 5 ml 249 บาท",
-    price: 450,
-    blurb: "No. 03 · ฟองสบู่ แป้ง มัสก์ กลิ่นตัวสะอาดแบบเพิ่งอาบน้ำ",
-    color: "#d9cfd6",
+    id: "black_samurai",
+    name: "Black Samurai",
+    size: "ตัวผู้ · Plakat หางสั้น",
+    price: 590,
+    blurb: "ตัวดำสนิท เกล็ดขอบเงินเหมือนชุดเกราะซามูไร ดุดัน สายสะสม",
+    color: "#2b2b2b",
     detail: {
-      number: "No. 03",
-      tagline: "น้ำอุ่น ประตูปิด เวลาที่เป็นของเราคนเดียว",
-      smells: "ฟองสบู่กับดอกไม้อ่อนๆ ตอนเปิด แล้วค่อยๆ เป็นแป้งนุ่มกับมัสก์ที่ติดผิว เหมือนเพิ่งอาบน้ำเสร็จ",
-      feel: "ผ่อนคลาย นุ่มนวล อ่อนโยนกับตัวเอง",
-      suits: [
-        "คนที่ชอบกลิ่นตัวสะอาดแบบเพิ่งอาบน้ำ",
-        "คนชอบกลิ่นแป้งกับมัสก์ที่อยู่ใกล้ตัว ไม่ฟุ้งไกล",
-        "คนที่ใช้น้ำหอมเพื่อให้ตัวเองรู้สึกดี มากกว่าให้คนอื่นได้กลิ่น",
-      ],
-      when: "หลังอาบน้ำ ก่อนนอน วันพักผ่อนอยู่บ้าน หรือวันที่อยากให้ตัวเองหายเหนื่อย",
+      number: "BF-003",
+      tagline: "เกราะดำขอบเงิน",
+      smells: "ปลากัดหางสั้น ลำตัวดำเข้ม เกล็ดมีขอบสีเงินเรียงเหมือนชุดเกราะ",
+      feel: "เข้ม ดุดัน ดูมีราคา",
+      suits: ["คนที่ชอบปลาสีเข้ม ดูดุ", "นักสะสมที่อยากได้ลายหายาก", "คนที่มีตู้พร้อมแล้ว"],
+      when: "ตู้ 5 ลิตรขึ้นไป พื้นหลังสีอ่อนจะทำให้ลายเกล็ดเด่นขึ้น",
     },
   },
   {
-    id: "stay_in",
-    image: "/img/stay_in.jpg",
-    name: "Stay In",
-    size: "10 ml · Sample 5 ml 249 บาท",
-    price: 450,
-    blurb: "No. 04 · แป้ง ไม้ มัสก์ อุ่นๆ เหมาะกับวันอยู่บ้านหรือหน้าฝน",
-    color: "#b59a82",
+    id: "galaxy_koi",
+    name: "Galaxy Koi",
+    size: "ตัวเมีย · HMPK",
+    price: 250,
+    blurb: "ตัวเมียลายคาร์ปมีจุดประกายแบบกาแล็กซี่ ตัวเล็ก สีสวย วางโต๊ะทำงานได้",
+    color: "#e08a4c",
     detail: {
-      number: "No. 04",
-      tagline: "ยกเลิกนัด แล้วเลือกโซฟา",
-      smells: "แป้งนุ่มกับดอกไม้จางๆ ตอนเปิด แล้วค่อยๆ อุ่นขึ้นเป็นไม้ มัสก์ และวานิลลาบางๆ เหมือนผ้าห่มผืนโปรด",
-      feel: "อบอุ่น ปลอดภัย ได้อยู่กับตัวเอง",
-      suits: [
-        "คนที่ชอบกลิ่นอุ่นๆ กลิ่นไม้ ไม่ชอบกลิ่นสดเปรี้ยว",
-        "คนรักบ้าน ชอบวันที่ได้อยู่กับหนังสือ ซีรีส์ และผ้าห่ม",
-        "คนที่อยากได้กลิ่นติดเสื้อผ้า ดมแล้วสบายใจ",
-      ],
-      when: "วันอยู่บ้าน ห้องแอร์เย็นๆ หน้าฝน ช่วงค่ำถึงก่อนนอน",
+      number: "BF-004",
+      tagline: "ลายคาร์ปจุดประกาย",
+      smells: "ปลากัดตัวเมียแบบ Halfmoon Plakat ลายคล้ายปลาคาร์ป มีจุดเล็กๆ ระยิบระยับทั่วตัว",
+      feel: "น่ารัก สดใส ดูเพลินบนโต๊ะทำงาน",
+      suits: ["คนที่อยากได้ปลาตัวเล็กสีสวยไว้บนโต๊ะ", "คนที่ชอบลายคาร์ป", "คนที่อยากเริ่มเลี้ยงแบบไม่ต้องดูแลหางยาว"],
+      when: "ตัวเมียก็กัดกันได้ คนเพิ่งเริ่มควรเลี้ยงตู้ละตัว",
     },
   },
   {
-    id: "tea_break",
-    image: "/img/tea_break.jpg",
-    name: "Tea Break",
-    size: "10 ml · Sample 5 ml 249 บาท",
-    price: 450,
-    blurb: "No. 05 · แพร์ ชาเขียว ลิลลี่ เบาสบาย เหมาะกับคนเพิ่งเริ่มใช้น้ำหอม",
-    color: "#c9cf9a",
+    id: "nemo_candy",
+    name: "Nemo Candy",
+    size: "ตัวผู้ · Plakat หางสั้น",
+    price: 390,
+    blurb: "สีส้ม แดง ดำ ขาว เป็นแต้มๆ เหมือนปลาการ์ตูนหรือลูกอม สีไม่ซ้ำใคร",
+    color: "#f39c12",
     detail: {
-      number: "No. 05",
-      tagline: "วันหยุดสบายๆ ที่ไม่มีอะไรต้องทำ",
-      smells: "แพร์สดกรอบเปิดมาก่อน ตามด้วยชาเขียวและลิลลี่ ปิดท้ายด้วยมัสก์กับไม้ซีดาร์บางๆ",
-      feel: "เบาสบาย ปลอดโปร่ง ได้พักจริงๆ",
-      suits: [
-        "คนที่ชอบกลิ่นผลไม้สดที่ไม่เลี่ยน",
-        "คนที่เพิ่งเริ่มใช้น้ำหอม อยากได้กลิ่นที่ใส่ง่าย",
-        "คนชอบเที่ยวคาเฟ่ ชอบวันหยุดแบบไม่มีแผน",
-      ],
-      when: "วันหยุด เที่ยวคาเฟ่ ช่วงบ่าย อากาศร้อนแล้วอยากได้กลิ่นที่เบาและสดชื่น",
+      number: "BF-005",
+      tagline: "ลูกอมหลากสี",
+      smells: "ปลากัดหางสั้น มีแต้มสีส้ม แดง ดำ และขาวทั่วตัว ลายของแต่ละตัวไม่ซ้ำกัน",
+      feel: "สนุก สีสันจัด ดูแล้วอารมณ์ดี",
+      suits: ["คนที่ชอบสีแปลกและลายไม่ซ้ำใคร", "คนที่อยากได้ปลาสีสดใส", "คนที่ชอบถ่ายรูปปลาลงโซเชียล"],
+      when: "ตู้ 5 ลิตรขึ้นไป สีจะสดเมื่อน้ำสะอาดและอาหารดี",
     },
   },
 ];
 
-/** Buying a Sample 5 ml (249 THB) and then a 10 ml bottle within 30 days credits the 249 THB back. */
-export const SAMPLE_PRICE = 249;
+/** Starter kit (5 L tank, pellets, water conditioner, almond leaves) added to a fish. Example price, see knowledge.md. */
+export const KIT_PRICE = 390;
 
 /** Points awarded once per user for each reason. Shown on the points page. */
 export const POINT_RULES = {
   register: { points: 50, label: "สมัครสมาชิก" },
-  friend: { points: 10, label: "เพิ่ม BitterSweet เป็นเพื่อนใน LINE" },
-  consent: { points: 20, label: "ยินยอมให้เก็บโปรไฟล์กลิ่น (PDPA)" },
+  friend: { points: 10, label: "เพิ่ม Aquatic Jewel เป็นเพื่อนใน LINE" },
+  consent: { points: 20, label: "ยินยอมให้เก็บโปรไฟล์การเลี้ยงปลา (PDPA)" },
   waitlist: { points: 30, label: "ลงชื่อ pre-order" },
-  survey: { points: 30, label: "ทำแบบสอบถามกลิ่น" },
+  survey: { points: 30, label: "ทำแบบสอบถามสายเลี้ยงปลา" },
 } as const;
 
 export type PointReason = keyof typeof POINT_RULES;

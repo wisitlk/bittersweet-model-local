@@ -1,4 +1,5 @@
 import { findProduct } from "./catalog";
+import { VARIANTS } from "./checkout";
 import { PERSONALITY } from "./survey";
 import type { Env } from "./types";
 
@@ -155,7 +156,7 @@ function describeLines(raw: string): string {
   try {
     const lines = JSON.parse(raw) as { product?: string; variant?: string; qty?: number }[];
     return lines
-      .map((l) => `${findProduct(l.product)?.name ?? l.product} ${l.variant === "sample" ? "Sample 5 ml" : "10 ml"} x${l.qty}`)
+      .map((l) => `${findProduct(l.product)?.name ?? l.product} ${(l.variant && l.variant in VARIANTS ? VARIANTS[l.variant as keyof typeof VARIANTS].label : l.variant) ?? ""} x${l.qty}`)
       .join(", ");
   } catch {
     return "";
@@ -201,7 +202,7 @@ export type StatusChange = "ok" | "bad_status" | "not_found" | "not_allowed";
  * double tap or two staff at once change it only once.
  */
 export async function setOrderStatus(db: D1Database, ref: unknown, to: unknown): Promise<StatusChange> {
-  if (typeof ref !== "string" || !/^BS-[A-Z0-9]{4,12}$/.test(ref)) return "not_found";
+  if (typeof ref !== "string" || !/^AJ-[A-Z0-9]{4,12}$/.test(ref)) return "not_found";
   if (typeof to !== "string" || !(ORDER_STATUSES as readonly string[]).includes(to)) return "bad_status";
   const row = await db.prepare("SELECT status FROM orders WHERE ref = ?1").bind(ref).first<{ status: string }>();
   if (!row) return "not_found";

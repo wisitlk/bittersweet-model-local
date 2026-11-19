@@ -68,9 +68,9 @@ const row = (over: Record<string, unknown> = {}) => ({
   token: GOOD_TOKEN,
   timestamp: "2026-10-08T10:00:00.000Z",
   line_user_id: U1,
-  segment: "easy_explorer",
-  scents_smelled: "Slow Morning",
-  liked: "Slow Morning",
+  segment: "first_timer",
+  scents_smelled: "Red Dragon Halfmoon",
+  liked: "Red Dragon Halfmoon",
   disliked: "",
   preferences: "work",
   sample_interest: true,
@@ -126,8 +126,8 @@ describe("Code.gs writes", () => {
 describe("Code.gs delete_request", () => {
   const existing: Row[] = [
     HEADER,
-    ["t", U1, "easy_explorer"],
-    ["t", U2, "sample_trier"],
+    ["t", U1, "first_timer"],
+    ["t", U2, "kit_buyer"],
     ["t", U1, "booth_smeller"],
   ];
 

@@ -1,9 +1,9 @@
 {
-  "name": "bittersweet-line-concierge",
+  "name": "aquatic-jewel-line",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "BitterSweet Scent Concierge: LINE Official Account chatbot on a Cloudflare Worker",
+  "description": "Aquatic Jewel Betta Concierge: LINE Official Account chatbot and LINE web shop on a Cloudflare Worker",
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

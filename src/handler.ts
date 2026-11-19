@@ -275,8 +275,8 @@ export async function handleEvent(
     ]);
     // The web-app survey (only with consent) tells the model who it is talking to; the note is for the model only
     // (see withNote) and is never stored as the customer's words.
-    const scent = survey ? (findProduct(PERSONALITY[survey.personality].scent)?.name ?? "") : "";
-    const note = survey ? surveyNote(survey, scent) : "";
+    const fish = survey ? (findProduct(PERSONALITY[survey.personality].fish)?.name ?? "") : "";
+    const note = survey ? surveyNote(survey, fish) : "";
     const resp = await askModel(env, content.systemPrompt, history, userText, note, consentStored, started + MODEL_BUDGET_MS);
     await loading; // never rejects
     if (!resp) return await say(APOLOGY_REPLY);

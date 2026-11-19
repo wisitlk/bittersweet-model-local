@@ -39,7 +39,7 @@ function stub() {
       if (url.includes("generativelanguage")) {
         geminiBodies.push(String(init?.body));
         const reply = {
-          reply: "ลอง Slow Morning ดูนะครับ",
+          reply: "ลอง Red Dragon Halfmoon ดูนะครับ",
           handoff: false,
           crm: {
             save: false, consent_pdpa: false, segment: "", scents_smelled: "", liked: "", disliked: "",
@@ -71,12 +71,12 @@ async function call(env: Env, path: string, method = "GET", body?: unknown) {
 
 const member = { first_name: "สมใจ", last_name: "ใจดี", phone: "081-234-5678", age: 25, consent: true };
 const answers = {
-  q1_wear_when: "work_daily",
-  q2_scent_family: "green_tea",
-  q3_intensity: "light",
-  q4_sounds_like_me: "calm_planner",
-  q5_perfume_experience: "sometimes",
-  q6_buy_intent: "sample_first",
+  q1_place: "desk",
+  q2_tank: "none_yet",
+  q3_fin_style: "short_fin",
+  q4_keeper_type: "first_timer",
+  q5_experience: "some",
+  q6_buy_intent: "with_kit",
 };
 
 beforeEach(() => {
@@ -140,16 +140,16 @@ describe("sign-up and survey in the web app", () => {
     await call(env, "/api/register", "POST", member);
     const r = await call(env, "/api/survey", "POST", { answers });
     expect(r.status).toBe(200);
-    expect(r.body.survey).toMatchObject({ age_group: "23-30", type: "Morning Minimalist", scent: "Slow Morning" });
-    expect(rows(env.DB, "SELECT personality FROM surveys")).toEqual([{ personality: "calm_planner" }]);
-    expect(sheetBodies.some((b) => b.includes("calm_planner") && b.includes("web survey"))).toBe(true);
+    expect(r.body.survey).toMatchObject({ age_group: "23-30", type: "First Timer", scent: "Blue Rim Plakat" });
+    expect(rows(env.DB, "SELECT personality FROM surveys")).toEqual([{ personality: "first_timer" }]);
+    expect(sheetBodies.some((b) => b.includes("first_timer") && b.includes("web survey"))).toBe(true);
     expect(sheetBodies.join("")).not.toContain("สมใจ");
   });
 
   it("rejects answers that are not one of the listed codes", async () => {
     const env = makeEnv();
     await call(env, "/api/register", "POST", member);
-    const r = await call(env, "/api/survey", "POST", { answers: { ...answers, q2_scent_family: "anything I type" } });
+    const r = await call(env, "/api/survey", "POST", { answers: { ...answers, q2_tank: "anything I type" } });
     expect(r.status).toBe(400);
   });
 
@@ -163,7 +163,7 @@ describe("sign-up and survey in the web app", () => {
       { systemPrompt: "SYS", greeting: "hi" },
       Date.now(),
     );
-    expect(geminiBodies[0]).toContain("Morning Minimalist");
+    expect(geminiBodies[0]).toContain("First Timer");
     expect(geminiBodies[0]).not.toContain("0812345678");
     expect(rows(env.DB, "SELECT content FROM messages WHERE role = 'user'")).toEqual([{ content: "แนะนำหน่อย" }]);
   });
@@ -190,7 +190,7 @@ describe("sign-up and survey in the web app", () => {
     );
     const msgs = chats[0]?.messages ?? [];
     expect(msgs[0]?.role).toBe("system");
-    expect(msgs[0]?.content).toContain("Morning Minimalist");
+    expect(msgs[0]?.content).toContain("First Timer");
     expect(msgs.at(-1)).toEqual({ role: "user", content: "แนะนำหน่อย" });
   });
 

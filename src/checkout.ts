@@ -1,4 +1,4 @@
-import { findProduct, SAMPLE_PRICE } from "./catalog";
+import { findProduct, KIT_PRICE } from "./catalog";
 import { isRecord } from "./guards";
 import { BALANCE_SQL } from "./loyalty";
 import { cleanPhone } from "./member";
@@ -7,17 +7,26 @@ import type { Env } from "./types";
 /*
  * Buy flow of the web app: cart (+ optional points redemption) -> shipping address -> PromptPay payment page.
  *
- * Sales are open only when BOTH are set (as Worker secrets, see docs/LIFF.md): FDA_NOTIFICATION_NO (the Thai FDA
- * cosmetic notification number) and PROMPTPAY_ID (the shop's PromptPay phone or tax id). Without them the same
+ * Sales are open only when PROMPTPAY_ID (the shop's PromptPay phone or tax id) is set as a Worker secret, see
+ * docs/LIFF.md. Live fish need no Thai FDA notification, so unlike the perfume shop there is no second gate. Without it the same
  * screens run as a demo: prices are computed, but no order, address or points change is stored and no payment QR
  * is made, so nobody can pay. The chat bot never takes orders itself; it sends buyers to this page.
  */
 
+/*
+ * Each fish has its own price (catalog.ts); a variant adds to it. The keys "bottle" and "sample" are kept from the
+ * perfume shop because they are stored in the orders table: "bottle" = the fish alone, "sample" = fish + starter kit.
+ */
 export const VARIANTS = {
-  bottle: { label: "ขวด 10 ml", price: 450 },
-  sample: { label: "Sample 5 ml", price: SAMPLE_PRICE },
+  bottle: { label: "ปลาอย่างเดียว", extra: 0 },
+  sample: { label: "ปลา + ชุดเริ่มต้นเลี้ยง", extra: KIT_PRICE },
 } as const;
 export type Variant = keyof typeof VARIANTS;
+
+/** Price of one unit of a line: the fish's own price plus the variant's extra. */
+export function unitPrice(productId: string, variant: Variant): number {
+  return (findProduct(productId)?.price ?? 0) + VARIANTS[variant].extra;
+}
 
 /** Points redemption: one per order, applied to the products total. The page shows these; the server decides. */
 export const REDEEM_OPTIONS = {
@@ -50,7 +59,7 @@ export interface Order {
   total: number; // subtotal - discount: what the customer pays for the products
 }
 
-export const salesOpen = (env: Env) => Boolean(env.FDA_NOTIFICATION_NO?.trim() && env.PROMPTPAY_ID?.trim());
+export const salesOpen = (env: Env) => Boolean(env.PROMPTPAY_ID?.trim());
 
 export type OrderError = "bad_cart" | "bad_shipping" | "bad_redeem";
 
@@ -81,7 +90,7 @@ export function parseOrder(body: unknown): Order | OrderError {
     redeem = body.redeem as RedeemOption;
   }
   // The price and the discount always come from the catalog, never from the page.
-  const subtotal = lines.reduce((sum, l) => sum + VARIANTS[l.variant].price * l.qty, 0);
+  const subtotal = lines.reduce((sum, l) => sum + unitPrice(l.product, l.variant) * l.qty, 0);
   const discount = redeem ? Math.round((subtotal * REDEEM_OPTIONS[redeem].percent) / 100) : 0;
   return { lines, shipping: { name, phone, address, postcode }, subtotal, redeem, discount, total: subtotal - discount };
 }
@@ -118,11 +127,11 @@ export function promptPayPayload(promptPayId: string, amount: number): string {
   return body + "6304" + crc16(body + "6304");
 }
 
-/** Order reference shown to the customer and staff, e.g. BS-7K2Q9M. */
+/** Order reference shown to the customer and staff, e.g. AJ-7K2Q9M. */
 export function orderRef(): string {
   const alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
   const bytes = crypto.getRandomValues(new Uint8Array(6));
-  return "BS-" + Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
+  return "AJ-" + Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
 }
 
 /**

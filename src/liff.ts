@@ -89,12 +89,12 @@ export function renderApp(liffId: string, sales = false): string {
   return appHtml.replace("__APP_CONFIG__", config);
 }
 
-/** What the page shows about a saved survey: the type and the scent that goes with it. */
+/** What the page shows about a saved survey: the type and the fish that goes with it (field kept as "scent"). */
 export function surveyResult(s: Survey | null) {
   if (!s) return null;
   const p = PERSONALITY[s.personality];
-  const product = findProduct(p.scent);
-  return { age_group: s.age_group, answers: s.answers, type: p.type, label: p.label, scent: product?.name ?? p.scent };
+  const product = findProduct(p.fish);
+  return { age_group: s.age_group, answers: s.answers, type: p.type, label: p.label, scent: product?.name ?? p.fish };
 }
 
 function ledgerLabel(r: LedgerRow): string {
@@ -158,9 +158,9 @@ export function surveyCrmRow(userId: string, s: Survey, now: Date): CrmRow {
     disliked: "",
     preferences:
       `web survey: age ${s.age_group}${s.under_20 ? " (under 20, guardian ok)" : ""}; type ${p.type}; ` +
-      `wear ${a.q1_wear_when}; family ${a.q2_scent_family}; intensity ${a.q3_intensity}; ` +
-      `experience ${a.q5_perfume_experience}; intent ${a.q6_buy_intent}`,
-    sample_interest: a.q6_buy_intent === "sample_first",
+      `place ${a.q1_place}; tank ${a.q2_tank}; fins ${a.q3_fin_style}; ` +
+      `experience ${a.q5_experience}; intent ${a.q6_buy_intent}`,
+    sample_interest: a.q6_buy_intent === "with_kit",
     preorder_waitlist: false,
     consent_pdpa: true,
     handoff: false,
@@ -285,7 +285,7 @@ export async function handleWeb(request: Request, env: Env, ctx: ExecutionContex
     if (typeof order === "string") return json({ error: order }, 400);
     const priced = { subtotal: order.subtotal, discount: order.discount, total: order.total, redeem: order.redeem, lines: order.lines };
     if (!salesOpen(env)) {
-      // Demo (no FDA number or PromptPay id): same answer shape, but nothing is stored, no points are spent and
+      // Demo (no PromptPay id): same answer shape, but nothing is stored, no points are spent and
       // no QR is made.
       if (order.redeem && (await pointBalance(env.DB, userId)) < REDEEM_OPTIONS[order.redeem].points) {
         return json({ error: "not_enough_points" }, 400);
@@ -301,7 +301,6 @@ export async function handleWeb(request: Request, env: Env, ctx: ExecutionContex
       ref,
       ...priced,
       promptpay: promptPayPayload(env.PROMPTPAY_ID ?? "", order.total),
-      fda: env.FDA_NOTIFICATION_NO,
       ...(await summary(env.DB, userId)),
     });
   }

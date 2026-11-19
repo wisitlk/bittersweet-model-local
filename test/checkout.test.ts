@@ -31,7 +31,7 @@ async function call(env: Env, path: string, body: unknown) {
 }
 
 const order = {
-  lines: [{ product: "slow_morning", variant: "bottle", qty: 2, price: 1 }],
+  lines: [{ product: "red_dragon", variant: "bottle", qty: 2, price: 1 }],
   shipping: { name: "สมใจ ใจดี", phone: "0812345678", address: "1 ถนนสุขุมวิท กรุงเทพ", postcode: "10110" },
 };
 
@@ -54,15 +54,15 @@ afterEach(() => {
 describe("checkout", () => {
   it("computes the total from the catalog, ignoring any price the page sends", () => {
     expect(parseOrder(order)).toMatchObject({ total: 900 });
-    expect(parseOrder({ ...order, lines: [{ product: "tea_break", variant: "sample", qty: 1 }] })).toMatchObject({ total: 249 });
+    expect(parseOrder({ ...order, lines: [{ product: "blue_rim", variant: "sample", qty: 1 }] })).toMatchObject({ total: 740 });
     expect(parseOrder({ ...order, lines: [{ product: "nope", variant: "bottle", qty: 1 }] })).toBe("bad_cart");
-    expect(parseOrder({ ...order, lines: [{ product: "slow_morning", variant: "bottle", qty: 99 }] })).toBe("bad_cart");
+    expect(parseOrder({ ...order, lines: [{ product: "red_dragon", variant: "bottle", qty: 99 }] })).toBe("bad_cart");
     expect(parseOrder({ ...order, shipping: { ...order.shipping, postcode: "1011" } })).toBe("bad_shipping");
     expect(parseOrder({ ...order, shipping: { ...order.shipping, address: "<script>" } })).toBe("bad_shipping");
   });
 
-  it("is a demo while the FDA number is missing: nothing stored, no payment QR", async () => {
-    const env = makeEnv({ PROMPTPAY_ID: "0812345678" });
+  it("is a demo while the PromptPay id is missing: nothing stored, no payment QR", async () => {
+    const env = makeEnv();
     const r = await call(env, "/api/checkout", order);
     expect(r.body).toMatchObject({ demo: true, total: 900 });
     expect(r.body.promptpay).toBeUndefined();
@@ -71,12 +71,12 @@ describe("checkout", () => {
   });
 
   it("stores the order and returns a PromptPay payload once sales are open (members only)", async () => {
-    const env = makeEnv({ FDA_NOTIFICATION_NO: "10-1-0000000000", PROMPTPAY_ID: "0812345678" });
+    const env = makeEnv({ PROMPTPAY_ID: "0812345678" });
     expect((await call(env, "/api/checkout", order)).body.error).toBe("register_required");
     await call(env, "/api/register", { first_name: "สมใจ", last_name: "ใจดี", phone: "0812345678", age: 25, consent: true });
     const r = await call(env, "/api/checkout", order);
     expect(r.body).toMatchObject({ demo: false, total: 900 });
-    expect(String(r.body.ref)).toMatch(/^BS-[2-9A-Z]{6}$/);
+    expect(String(r.body.ref)).toMatch(/^AJ-[2-9A-Z]{6}$/);
     expect(String(r.body.promptpay)).toContain("54069" + "00.00");
     expect(rows(env.DB, "SELECT total, status, ship_postcode FROM orders")).toEqual([
       { total: 900, status: "awaiting_payment", ship_postcode: "10110" },
@@ -85,7 +85,7 @@ describe("checkout", () => {
 });
 
 describe("points redemption", () => {
-  const OPEN = { FDA_NOTIFICATION_NO: "10-1-0000000000", PROMPTPAY_ID: "0812345678" };
+  const OPEN = { PROMPTPAY_ID: "0812345678" };
   const member = { first_name: "สมใจ", last_name: "ใจดี", phone: "0812345678", age: 25, consent: true };
 
   it("takes 20% or 50% off the products total, computed on the server", () => {
