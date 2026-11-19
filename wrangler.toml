@@ -1,4 +1,4 @@
-name = "bittersweet-line-concierge"
+name = "bittersweet-line-concierge"   # kept: the shop reuses the BitterSweet LINE OA, webhook URL and LIFF
 main = "src/index.ts"
 compatibility_date = "2026-10-01"
 
@@ -13,7 +13,7 @@ fallthrough = true
 directory = "public"
 
 # D1 database (see SETUP.md, step "Create the database").
-# The owner's existing database bitter_sweet (an id is not a secret). New owners: `npx wrangler d1 create <name>`.
+# The existing database bitter_sweet, reused by the fish shop (an id is not a secret).
 [[d1_databases]]
 binding = "DB"
 database_name = "bitter_sweet"
@@ -45,11 +45,10 @@ USER_DAILY_LIMIT = "60"        # messages per user per UTC day
 DAILY_CLAUDE_CAP = "1500"      # max Claude calls per UTC day, all users together
 
 # LINE web app (docs/LIFF.md). Neither is a secret. Empty = the web app answers 503 and the chat bot is unaffected.
-LIFF_ID = "2012248666-XEfSJJcL"                 # from LINE Developers -> LINE Login channel -> LIFF tab, e.g. 2001234567-AbCdEfGh
+LIFF_ID = "2012248666-XEfSJJcL" # from LINE Developers -> LINE Login channel -> LIFF tab, e.g. 2001234567-AbCdEfGh
 LINE_LOGIN_CHANNEL_ID = "2012248666"   # the LINE Login channel's Channel ID (Basic settings), e.g. 2001234567
-# Selling (docs/LIFF.md): FDA_NOTIFICATION_NO and PROMPTPAY_ID are Worker secrets, not vars here, so the shop's
-# PromptPay number stays out of this public repo. Without both, the buy flow is a demo:
-#   npx wrangler secret put FDA_NOTIFICATION_NO
+# Selling: PROMPTPAY_ID is a Worker secret, not a var here, so the shop's PromptPay number stays out of this public
+# repo. Without it, the buy flow is a demo (live fish need no FDA number):
 #   npx wrangler secret put PROMPTPAY_ID
 
 # Secrets (set with `npx wrangler secret put <NAME>`, never written here):

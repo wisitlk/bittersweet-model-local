@@ -1,12 +1,13 @@
 import adminHtml from "../web/admin.html";
 import appHtml from "../web/app.html";
 import { adminDaily, adminOrders, adminSummary, isAdmin, setOrderStatus } from "./admin";
-import { findProduct, POINT_RULES, PRODUCTS, type PointReason } from "./catalog";
+import { findProduct, POINT_RULES, type PointReason } from "./catalog";
 import { sendCrmRow, type CrmRow } from "./crm";
 import { errName, isRecord } from "./guards";
 import { awardPoints, BAHT_PER_POINT, joinWaitlist, loadLedger, loadPoints, loadWaitlist, pointBalance, type LedgerRow } from "./loyalty";
 import { allowWebRequest, hasConsent, saveConsent } from "./store";
-import { orderRef, parseOrder, promptPayPayload, REDEEM_OPTIONS, salesOpen, saveOrder, VARIANTS } from "./checkout";
+import { hasStock, orderRef, parseOrder, promptPayPayload, REDEEM_OPTIONS, salesOpen, saveOrder, VARIANTS } from "./checkout";
+import { loadProducts, MAX_PRODUCT_BODY_BYTES, parseProductInput, saveProduct, serveImage, type ShopProduct } from "./products";
 import { isMinor, loadMember, MAX_AGE, MIN_AGE, parseMember, saveMember } from "./member";
 import { loadSurvey, parseSurvey, PERSONALITY, QUESTIONS, saveSurvey, type Survey } from "./survey";
 import type { Env } from "./types";
@@ -74,14 +75,14 @@ export async function isFriend(token: string, userId: string): Promise<boolean> 
 }
 
 /** The page, with the LIFF id and catalog filled in. `<` is escaped so the JSON cannot close the script tag. */
-export function renderApp(liffId: string, sales = false): string {
+export function renderApp(liffId: string, sales = false, products: readonly ShopProduct[] = []): string {
   const config = JSON.stringify({
     liffId,
     sales,
     variants: VARIANTS,
     redeem: REDEEM_OPTIONS,
     bahtPerPoint: BAHT_PER_POINT,
-    products: PRODUCTS,
+    products,
     rules: POINT_RULES,
     survey: { questions: QUESTIONS },
     member: { minAge: MIN_AGE, maxAge: MAX_AGE },
@@ -89,12 +90,12 @@ export function renderApp(liffId: string, sales = false): string {
   return appHtml.replace("__APP_CONFIG__", config);
 }
 
-/** What the page shows about a saved survey: the type and the scent that goes with it. */
+/** What the page shows about a saved survey: the type and the fish that goes with it (field kept as "scent"). */
 export function surveyResult(s: Survey | null) {
   if (!s) return null;
   const p = PERSONALITY[s.personality];
-  const product = findProduct(p.scent);
-  return { age_group: s.age_group, answers: s.answers, type: p.type, label: p.label, scent: product?.name ?? p.scent };
+  const product = findProduct(p.fish);
+  return { age_group: s.age_group, answers: s.answers, type: p.type, label: p.label, scent: product?.name ?? p.fish };
 }
 
 function ledgerLabel(r: LedgerRow): string {
@@ -126,8 +127,8 @@ async function summary(db: D1Database, userId: string) {
 }
 
 /** Sheet row for a waitlist sign-up from the web app. Always with consent; carries no message text. */
-export function waitlistCrmRow(userId: string, productId: string, now: Date): CrmRow {
-  const product = findProduct(productId);
+export function waitlistCrmRow(userId: string, productId: string, now: Date, name?: string): CrmRow {
+  const product = name ? { name } : findProduct(productId);
   return {
     timestamp: now.toISOString(),
     line_user_id: userId,
@@ -158,9 +159,9 @@ export function surveyCrmRow(userId: string, s: Survey, now: Date): CrmRow {
     disliked: "",
     preferences:
       `web survey: age ${s.age_group}${s.under_20 ? " (under 20, guardian ok)" : ""}; type ${p.type}; ` +
-      `wear ${a.q1_wear_when}; family ${a.q2_scent_family}; intensity ${a.q3_intensity}; ` +
-      `experience ${a.q5_perfume_experience}; intent ${a.q6_buy_intent}`,
-    sample_interest: a.q6_buy_intent === "sample_first",
+      `place ${a.q1_place}; tank ${a.q2_tank}; fins ${a.q3_fin_style}; ` +
+      `experience ${a.q5_experience}; intent ${a.q6_buy_intent}`,
+    sample_interest: a.q6_buy_intent === "with_kit",
     preorder_waitlist: false,
     consent_pdpa: true,
     handoff: false,
@@ -169,10 +170,10 @@ export function surveyCrmRow(userId: string, s: Survey, now: Date): CrmRow {
   };
 }
 
-async function readJson(request: Request): Promise<unknown> {
-  if (Number(request.headers.get("content-length")) > MAX_BODY_BYTES) return "too_large";
+async function readJson(request: Request, max = MAX_BODY_BYTES): Promise<unknown> {
+  if (Number(request.headers.get("content-length")) > max) return "too_large";
   const raw = await request.text();
-  if (raw.length > MAX_BODY_BYTES) return "too_large";
+  if (raw.length > max) return "too_large";
   try {
     return JSON.parse(raw) as unknown;
   } catch {
@@ -186,7 +187,7 @@ export async function handleWeb(request: Request, env: Env, ctx: ExecutionContex
 
   if ((pathname === "/app" || pathname === "/app/") && request.method === "GET") {
     if (!env.LIFF_ID) return new Response("Web app not configured (LIFF_ID)", { status: 503 });
-    return new Response(renderApp(env.LIFF_ID, salesOpen(env)), {
+    return new Response(renderApp(env.LIFF_ID, salesOpen(env), await loadProducts(env.DB)), {
       headers: {
         "Content-Type": "text/html; charset=utf-8",
         "X-Content-Type-Options": "nosniff",
@@ -216,7 +217,13 @@ export async function handleWeb(request: Request, env: Env, ctx: ExecutionContex
   const isCheckout = pathname === "/api/checkout" && request.method === "POST";
   const isAdminGet = pathname === "/api/admin" && request.method === "GET";
   const isAdminOrder = pathname === "/api/admin/order" && request.method === "POST";
-  if (!isMe && !isWaitlist && !isSurvey && !isRegister && !isCheckout && !isAdminGet && !isAdminOrder) return null;
+  const isAdminProduct = pathname === "/api/admin/product" && request.method === "POST";
+
+  // Uploaded fish photos (public, like the bundled ones in public/img).
+  const img = /^\/pimg\/([a-z0-9_]{2,40})$/.exec(pathname);
+  if (img && request.method === "GET") return serveImage(env.DB, img[1]!);
+
+  if (!isMe && !isWaitlist && !isSurvey && !isRegister && !isCheckout && !isAdminGet && !isAdminOrder && !isAdminProduct) return null;
 
   if (!env.LINE_LOGIN_CHANNEL_ID) {
     console.error("liff_not_configured");
@@ -244,12 +251,28 @@ export async function handleWeb(request: Request, env: Env, ctx: ExecutionContex
     return json({ ...(await summary(env.DB, userId)), friend, consent, admin: isAdmin(env, userId) });
   }
 
-  if (isAdminGet || isAdminOrder) {
+  if (isAdminGet || isAdminOrder || isAdminProduct) {
     // Staff only: the same 404 as an unknown path, so the dashboard's existence is not advertised.
     if (!isAdmin(env, userId)) return json({ error: "not_found" }, 404);
     if (isAdminGet) {
-      const [stats, daily, orders] = await Promise.all([adminSummary(env.DB, now), adminDaily(env.DB, now), adminOrders(env.DB)]);
-      return json({ ...stats, daily, orderList: orders, sales_open: salesOpen(env) });
+      const [stats, daily, orders, products] = await Promise.all([
+        adminSummary(env.DB, now),
+        adminDaily(env.DB, now),
+        adminOrders(env.DB),
+        loadProducts(env.DB, true),
+      ]);
+      return json({ ...stats, daily, orderList: orders, products, sales_open: salesOpen(env) });
+    }
+    if (isAdminProduct) {
+      // POST /api/admin/product {id?, name, price, stock, status, size, blurb, color, detail, image?, remove_image?}
+      const input = await readJson(request, MAX_PRODUCT_BODY_BYTES);
+      if (input === "too_large") return json({ error: "too_large" }, 413);
+      const parsed = parseProductInput(input);
+      if (typeof parsed === "string") return json({ error: parsed }, 400);
+      const id = await saveProduct(env.DB, parsed, now);
+      if (!id) return json({ error: "not_found" }, 404);
+      console.error("product_saved"); // event name only
+      return json({ ok: true, id, products: await loadProducts(env.DB, true) });
     }
     // POST /api/admin/order {ref, status}
     const change = await readJson(request);
@@ -281,27 +304,28 @@ export async function handleWeb(request: Request, env: Env, ctx: ExecutionContex
 
   if (isCheckout) {
     // POST /api/checkout {lines: [{product, variant, qty}], shipping: {name, phone, address, postcode}, redeem?}
-    const order = parseOrder(body);
+    const order = parseOrder(body, await loadProducts(env.DB));
     if (typeof order === "string") return json({ error: order }, 400);
     const priced = { subtotal: order.subtotal, discount: order.discount, total: order.total, redeem: order.redeem, lines: order.lines };
     if (!salesOpen(env)) {
-      // Demo (no FDA number or PromptPay id): same answer shape, but nothing is stored, no points are spent and
+      // Demo (no PromptPay id): same answer shape, but nothing is stored, no points are spent and
       // no QR is made.
       if (order.redeem && (await pointBalance(env.DB, userId)) < REDEEM_OPTIONS[order.redeem].points) {
         return json({ error: "not_enough_points" }, 400);
       }
+      if (!(await hasStock(env.DB, order.lines))) return json({ error: "sold_out" }, 400);
       return json({ demo: true, ref: "DEMO", ...priced });
     }
     if (!(await loadMember(env.DB, userId))) return json({ error: "register_required" }, 400);
     const ref = orderRef();
-    if (!(await saveOrder(env.DB, ref, userId, order, now))) return json({ error: "not_enough_points" }, 400);
+    const saved = await saveOrder(env.DB, ref, userId, order, now);
+    if (saved !== "ok") return json({ error: saved }, 400);
     console.error("order_created"); // event name only: no order details in logs
     return json({
       demo: false,
       ref,
       ...priced,
       promptpay: promptPayPayload(env.PROMPTPAY_ID ?? "", order.total),
-      fda: env.FDA_NOTIFICATION_NO,
       ...(await summary(env.DB, userId)),
     });
   }
@@ -318,8 +342,9 @@ export async function handleWeb(request: Request, env: Env, ctx: ExecutionContex
   }
 
   // POST /api/waitlist {product, consent}
-  if (!isRecord(body) || !findProduct(body.product)) return json({ error: "unknown_product" }, 400);
-  const productId = body.product as string;
+  const listed = isRecord(body) ? (await loadProducts(env.DB)).find((p) => p.id === body.product) : undefined;
+  if (!isRecord(body) || !listed) return json({ error: "unknown_product" }, 400);
+  const productId = listed.id;
   // The waitlist stores who the customer is, so PDPA consent is required: given now, or stored from the chat.
   if (body.consent !== true && !(await hasConsent(env.DB, userId))) return json({ error: "consent_required" }, 400);
 
@@ -329,6 +354,6 @@ export async function handleWeb(request: Request, env: Env, ctx: ExecutionContex
     awardPoints(env.DB, userId, "waitlist", now),
     awardPoints(env.DB, userId, "consent", now),
   ]);
-  if (isNew) ctx.waitUntil(sendCrmRow(env.SHEETS_WEBHOOK_URL, env.SHEETS_TOKEN, waitlistCrmRow(userId, productId, new Date(now))));
+  if (isNew) ctx.waitUntil(sendCrmRow(env.SHEETS_WEBHOOK_URL, env.SHEETS_TOKEN, waitlistCrmRow(userId, productId, new Date(now), listed.name)));
   return json({ ...(await summary(env.DB, userId)), joined: productId, consent: true });
 }

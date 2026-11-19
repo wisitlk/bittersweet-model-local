@@ -27,9 +27,9 @@ function resp(over: { handoff?: boolean; crm?: Partial<ConciergeResponse["crm"]>
 }
 
 const profile = {
-  segment: "easy_explorer" as const,
-  scents_smelled: "Slow Morning",
-  liked: "Slow Morning",
+  segment: "first_timer" as const,
+  scents_smelled: "Red Dragon Halfmoon",
+  liked: "Red Dragon Halfmoon",
   disliked: "",
   preferences: "work, fresh",
   sample_interest: true,
@@ -52,8 +52,8 @@ describe("buildCrmRow", () => {
     expect(row).toMatchObject({
       timestamp: "2026-10-08T10:00:00.000Z",
       line_user_id: "U1",
-      segment: "easy_explorer",
-      scents_smelled: "Slow Morning",
+      segment: "first_timer",
+      scents_smelled: "Red Dragon Halfmoon",
       sample_interest: true,
       consent_pdpa: true,
       handoff: false,

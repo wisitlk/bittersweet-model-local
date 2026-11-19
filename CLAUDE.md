@@ -1,5 +1,10 @@
 # CLAUDE.md — BitterSweet LINE Scent Concierge
 
+> On this branch the bot is **Aquatic Jewel**, a betta fish shop: read `docs/AQUARIUM.md` first. Its content
+> (`content/`, `src/catalog.ts`, `src/survey.ts`) is about fish; sales open with `PROMPTPAY_ID` alone (no FDA gate).
+> Listings and stock live in D1 (`src/products.ts`), edited by staff at `/app/admin`; keep stock changes inside the
+> order batch (`saveOrder`) and the cancel batch (`setOrderStatus`).
+
 Instructions for Claude Code working in this repository. Read `HANDOFF.md` next: it holds the
 decisions already taken and the problems the first build ran into.
 

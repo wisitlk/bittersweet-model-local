@@ -4,15 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
-<title>BitterSweet Dashboard</title>
+<title>Aquatic Jewel Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&family=Noto+Serif+Thai:wght@600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     color-scheme: light;
-    --bg: #f6f4ee; --surface: #fffdf8; --ink: #183d2b; --ink-2: #44524a; --muted: #6b766e; --line: #e3e1d7; --grid: #ecebe3;
-    --brand: #183d2b; --brand-ink: #f6f4ee; --brand-soft: #c9d8cc;
+    --bg: #eef4f7; --surface: #ffffff; --ink: #0f3a4f; --ink-2: #44524a; --muted: #6b766e; --line: #e3e1d7; --grid: #ecebe3;
+    --brand: #0f3a4f; --brand-ink: #eef4f7; --brand-soft: #b9d3e0;
     --count: #2f7a4b; --count-tint: rgba(47, 122, 75, .12); --money: #d9692a; --money-tint: rgba(217, 105, 42, .12);
     --track: #eeede6; --shadow: 0 1px 2px rgba(24, 61, 43, .06), 0 4px 16px rgba(24, 61, 43, .05);
     --st-wait: #eda100; --st-paid: #2a78d6; --st-ship: #2f7a4b; --st-cancel: #8a8f8b;
@@ -21,7 +21,7 @@
     :root {
       color-scheme: dark;
       --bg: #161814; --surface: #22231f; --ink: #eef0e8; --ink-2: #c6ccc3; --muted: #9aa197; --line: #34362f; --grid: #2d2f29;
-      --brand: #0f2a1d; --brand-ink: #eef0e8; --brand-soft: #9fb8a6;
+      --brand: #0b2533; --brand-ink: #eef4f7; --brand-soft: #9fbfcf;
       --count: #4fa06c; --count-tint: rgba(79, 160, 108, .18); --money: #d9692a; --money-tint: rgba(217, 105, 42, .18);
       --track: #2c2e28; --shadow: none;
       --st-wait: #c98500; --st-paid: #3987e5; --st-ship: #4fa06c; --st-cancel: #8a8f8b;
@@ -87,6 +87,27 @@
     font-size: 13px; display: none; z-index: 10; white-space: nowrap; box-shadow: 0 4px 12px rgba(0, 0, 0, .2); }
   #state { margin-top: 32px; color: var(--muted); }
   .hidden { display: none !important; }
+  main button, dialog button { border-color: var(--line); color: var(--ink); background: var(--surface); }
+  main button:hover, dialog button:hover { background: var(--track); }
+  button.primary { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
+  button.primary:hover { background: var(--brand); opacity: .9; }
+  button.small { padding: 4px 12px; font-size: 13px; }
+  .thumb { width: 52px; height: 40px; border-radius: 8px; object-fit: cover; display: block; }
+  .chip { width: 52px; height: 40px; border-radius: 8px; display: block; }
+  tr.off td { opacity: .55; }
+  dialog { border: 1px solid var(--line); border-radius: 18px; padding: 20px; width: min(560px, calc(100vw - 32px));
+    background: var(--surface); color: var(--ink); }
+  dialog::backdrop { background: rgba(0, 0, 0, .45); }
+  .form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; margin-top: 12px; }
+  .form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--ink-2); }
+  .form .wide { grid-column: 1 / -1; }
+  .form input, .form textarea, .form select { font: inherit; font-size: 15px; padding: 8px 10px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+  .form textarea { min-height: 64px; resize: vertical; }
+  .preview { width: 100%; max-height: 220px; object-fit: contain; border-radius: 12px; background: var(--track); }
+  .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; flex-wrap: wrap; }
+  .err { color: #c0392b; font-size: 14px; margin: 8px 0 0; }
+  @media (max-width: 640px) { .form { grid-template-columns: 1fr; } }
   @media (max-width: 980px) { .grid3 { grid-template-columns: repeat(2, 1fr); } .grid2 { grid-template-columns: 1fr; } }
   @media (max-width: 640px) {
     .kpis { grid-template-columns: repeat(2, 1fr); gap: 10px; } .grid3, .pair { grid-template-columns: 1fr; }
@@ -97,7 +118,7 @@
 <body>
 <div class="top">
   <div class="top-in">
-    <h1 class="brand">BitterSweet<small>Staff dashboard · Scent Concierge</small></h1>
+    <h1 class="brand">Aquatic Jewel<small>Staff dashboard · Betta Concierge</small></h1>
     <div class="top-right">
       <span id="sales"></span>
       <span id="updated">กำลังโหลด…</span>
@@ -108,7 +129,14 @@
 <main>
   <p id="state">กำลังเข้าสู่ระบบด้วย LINE…</p>
   <div id="dash" class="hidden">
-    <p class="note">หน้านี้สำหรับทีมงานเท่านั้น มีข้อมูลลูกค้า อย่าแคปหน้าจอส่งต่อ · เปลี่ยนสถานะออเดอร์ได้ที่แท็บแอดมินใน LINE</p>
+    <p class="note">หน้านี้สำหรับทีมงานเท่านั้น มีข้อมูลลูกค้า อย่าแคปหน้าจอส่งต่อ · เปลี่ยนสถานะออเดอร์ได้ในตารางด้านล่าง หรือแท็บแอดมินใน LINE</p>
+
+    <div class="sec">ปลาที่ลงขาย</div>
+    <section class="card">
+      <div class="head"><h2>สินค้าในหน้าร้าน</h2><button type="button" class="primary" id="add-fish">+ เพิ่มปลา</button></div>
+      <p class="hint">กดแก้ไขเพื่อเปลี่ยนราคา รูป หรือจำนวน · ปลาที่สต็อกเหลือ 0 แสดงว่า "ขายแล้ว" · ซ่อนแล้วลูกค้าจะไม่เห็น</p>
+      <div class="scroll"><table id="t-products"></table></div>
+    </section>
 
     <div class="sec">ภาพรวม</div>
     <section class="kpis" id="kpis" aria-label="ตัวเลขหลัก"></section>
@@ -122,7 +150,7 @@
       <div class="card"><div class="head"><h2>สมาชิกใหม่</h2><span class="total" id="t-members"></span></div>
         <p class="hint">สมัครในหน้าเว็บ LIFF</p><div id="c-members"></div></div>
       <div class="card"><div class="head"><h2>ทำแบบสอบถาม</h2><span class="total" id="t-surveys"></span></div>
-        <p class="hint">ส่งหรือแก้แบบสอบถามกลิ่น</p><div id="c-surveys"></div></div>
+        <p class="hint">ส่งหรือแก้แบบสอบถามสายเลี้ยงปลา</p><div id="c-surveys"></div></div>
       <div class="card"><div class="head"><h2>ออเดอร์</h2><span class="total" id="t-orders"></span></div>
         <p class="hint">ทุกสถานะ</p><div id="c-orders"></div></div>
       <div class="card"><div class="head"><h2>ยอดขาย (บาท)</h2><span class="total" id="t-revenue"></span></div>
@@ -140,13 +168,40 @@
     </section>
 
     <div class="sec">ออเดอร์</div>
-    <section class="grid2">
-      <div class="card"><h2>สถานะออเดอร์</h2><div class="bars" id="b-status"></div></div>
-      <div class="card"><h2>ออเดอร์ล่าสุด</h2><div class="scroll"><table id="t-list"></table></div></div>
-    </section>
+    <section class="card"><h2>ออเดอร์ล่าสุด</h2><p class="hint">ที่อยู่เต็มแสดงเฉพาะออเดอร์ที่ชำระแล้วและรอส่ง</p>
+      <div class="scroll"><table id="t-list"></table></div></section>
+    <section class="card" style="margin-top:14px"><h2>สถานะออเดอร์</h2><div class="bars" id="b-status"></div></section>
   </div>
 </main>
 <div id="tip" role="status"></div>
+<dialog id="fish">
+  <form id="fish-form" novalidate>
+    <h2 id="fish-title" style="margin:0;font-size:18px">เพิ่มปลา</h2>
+    <div class="form">
+      <label class="wide">ชื่อปลา *<input id="f-name" maxlength="60" required placeholder="เช่น Gold Koi Halfmoon"></label>
+      <label>ราคา (บาท) *<input id="f-price" type="number" inputmode="numeric" min="1" step="1" required></label>
+      <label>จำนวนในสต็อก *<input id="f-stock" type="number" inputmode="numeric" min="0" step="1" value="1" required></label>
+      <label>เพศ / ประเภทหาง<input id="f-size" maxlength="80" placeholder="ตัวผู้ · Halfmoon หางยาว"></label>
+      <label>รหัสปลา<input id="f-number" maxlength="30" placeholder="BF-006"></label>
+      <label class="wide">คำอธิบายสั้น (บนการ์ด)<input id="f-blurb" maxlength="200"></label>
+      <label class="wide">คำโปรย<input id="f-tagline" maxlength="100"></label>
+      <label class="wide">หน้าตาเป็นแบบไหน<textarea id="f-smells" maxlength="400"></textarea></label>
+      <label class="wide">ดูแล้วรู้สึก<input id="f-feel" maxlength="200"></label>
+      <label class="wide">เหมาะกับใคร (บรรทัดละข้อ)<textarea id="f-suits"></textarea></label>
+      <label class="wide">การดูแล<textarea id="f-when" maxlength="400"></textarea></label>
+      <label>สีพื้นการ์ด<input id="f-color" type="color" value="#2e6fa7"></label>
+      <label>สถานะ<select id="f-status"><option value="active">แสดงในหน้าร้าน</option><option value="hidden">ซ่อน</option></select></label>
+      <label class="wide">รูปปลา<input id="f-photo" type="file" accept="image/*"></label>
+      <div class="wide"><img id="f-preview" class="preview hidden" alt="">
+        <button type="button" class="small hidden" id="f-remove" style="margin-top:6px">ลบรูป</button></div>
+    </div>
+    <p class="err hidden" id="f-error"></p>
+    <div class="actions">
+      <button type="button" id="f-cancel">ยกเลิก</button>
+      <button type="submit" class="primary" id="f-save">บันทึก</button>
+    </div>
+  </form>
+</dialog>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" charset="utf-8"></script>
 <script>
 const LIFF_ID = __LIFF_ID__;
@@ -297,21 +352,169 @@ function render(d) {
   bars($("b-waitlist"), d.waitlist.map((w) => ({ label: w.name, n: w.count })));
   bars($("b-status"), Object.entries(STATUS).map(([k, s]) => ({ key: k, label: s.th, n: d.orders[k] ?? 0 })), (r) => STATUS[r.key].color);
 
-  const rows = d.orderList.slice(0, 10);
+  const rows = d.orderList.slice(0, 20);
   $("t-list").innerHTML = rows.length
-    ? `<tr><th>เลขที่</th><th>วันที่</th><th>สินค้า</th><th>ชื่อ</th><th>สถานะ</th><th style="text-align:right">ยอด</th></tr>` +
+    ? `<tr><th>เลขที่</th><th>วันที่</th><th>สินค้า</th><th>ชื่อ / ที่อยู่</th><th>สถานะ</th><th style="text-align:right">ยอด</th><th></th></tr>` +
       rows.map((o) => {
         const s = STATUS[o.status] ?? { th: o.status, color: "var(--muted)" };
         return `<tr><td>${esc(o.ref)}</td><td>${new Date(o.created_at).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" })}</td>
-          <td>${esc(o.items)}</td><td>${esc(o.name)}</td><td><span class="st"><i style="background:${s.color}"></i>${esc(s.th)}</span></td>
-          <td class="num">${nf.format(o.total)}</td></tr>`;
+          <td>${esc(o.items)}</td><td>${esc(o.name)}<div class="hint">${esc(o.phone)} · ${esc(o.address)}</div></td>
+          <td><span class="st"><i style="background:${s.color}"></i>${esc(s.th)}</span></td>
+          <td class="num">${nf.format(o.total)}</td>
+          <td>${o.next.map((to) => `<button type="button" class="small" data-ref="${esc(o.ref)}" data-to="${esc(to)}">${esc(NEXT_LABEL[to] || to)}</button>`).join(" ")}</td></tr>`;
       }).join("")
     : `<tr><td class="empty">ยังไม่มีออเดอร์</td></tr>`;
 
+  for (const b of document.querySelectorAll("[data-to]")) b.onclick = () => setStatus(b.dataset.ref, b.dataset.to, b);
   $("sales").innerHTML = d.sales_open ? `<span class="pill live">เปิดขายจริง</span>` : `<span class="pill demo">ร้านยังเป็นเดโม</span>`;
   $("updated").textContent = "อัปเดต " + new Date().toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" });
   $("state").classList.add("hidden");
   $("dash").classList.remove("hidden");
+}
+
+
+// ---- Fish listings ------------------------------------------------------------------------------------------------
+let products = [];
+let editing = null; // the listing being edited, or null for a new one
+let photo = null; // a new photo as a data: URL, after resizing
+let removePhoto = false;
+
+function renderProducts() {
+  $("t-products").innerHTML = products.length
+    ? `<tr><th></th><th>ชื่อ</th><th style="text-align:right">ราคา</th><th style="text-align:right">สต็อก</th><th>สถานะ</th><th></th></tr>` +
+      products.map((p, i) => {
+        const st = p.status === "hidden" ? "ซ่อน" : p.stock <= 0 ? "ขายแล้ว" : "ขายอยู่";
+        const pic = p.image ? `<img class="thumb" src="${esc(p.image)}" alt="">` : `<span class="chip" style="background:${esc(p.color)}"></span>`;
+        return `<tr class="${p.status === "hidden" || p.stock <= 0 ? "off" : ""}"><td>${pic}</td>
+          <td><strong>${esc(p.name)}</strong><div class="hint">${esc(p.size)}</div></td>
+          <td class="num">${nf.format(p.price)}</td><td class="num">${nf.format(p.stock)}</td><td>${st}</td>
+          <td><button type="button" class="small" data-edit="${i}">แก้ไข</button></td></tr>`;
+      }).join("")
+    : `<tr><td class="empty">ยังไม่มีปลาในร้าน กด "+ เพิ่มปลา"</td></tr>`;
+  for (const b of document.querySelectorAll("[data-edit]")) b.onclick = () => openFish(products[Number(b.dataset.edit)]);
+}
+
+function openFish(p) {
+  editing = p || null;
+  photo = null;
+  removePhoto = false;
+  const d = (p && p.detail) || {};
+  $("fish-title").textContent = p ? "แก้ไข " + p.name : "เพิ่มปลา";
+  $("f-name").value = p ? p.name : "";
+  $("f-price").value = p ? p.price : "";
+  $("f-stock").value = p ? p.stock : 1;
+  $("f-size").value = p ? p.size : "";
+  $("f-number").value = d.number || "";
+  $("f-blurb").value = p ? p.blurb : "";
+  $("f-tagline").value = d.tagline || "";
+  $("f-smells").value = d.smells || "";
+  $("f-feel").value = d.feel || "";
+  $("f-suits").value = (d.suits || []).join("\n");
+  $("f-when").value = d.when || "";
+  $("f-color").value = p ? p.color : "#2e6fa7";
+  $("f-status").value = p ? p.status : "active";
+  $("f-photo").value = "";
+  showPreview(p && p.image ? p.image : "");
+  $("f-error").classList.add("hidden");
+  $("fish").showModal();
+}
+
+function showPreview(src) {
+  $("f-preview").src = src || "";
+  $("f-preview").classList.toggle("hidden", !src);
+  $("f-remove").classList.toggle("hidden", !src);
+}
+
+/** Shrinks a photo in the browser to at most 1000 px and about 350 KB of JPEG, so it fits the database. */
+async function resizePhoto(file) {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, 1000 / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  for (const q of [0.82, 0.7, 0.55, 0.4]) {
+    const url = canvas.toDataURL("image/jpeg", q);
+    if (url.length * 0.75 < 350 * 1024) return url;
+  }
+  throw new Error("too_big");
+}
+
+$("f-photo").onchange = async () => {
+  const file = $("f-photo").files[0];
+  if (!file) return;
+  try {
+    photo = await resizePhoto(file);
+    removePhoto = false;
+    showPreview(photo);
+  } catch {
+    photo = null;
+    $("f-error").textContent = "อ่านรูปนี้ไม่ได้ ลองใช้รูป JPG หรือ PNG อื่น";
+    $("f-error").classList.remove("hidden");
+  }
+};
+$("f-remove").onclick = () => { photo = null; removePhoto = true; $("f-photo").value = ""; showPreview(""); };
+$("f-cancel").onclick = () => $("fish").close();
+$("add-fish").onclick = () => openFish(null);
+
+const FISH_ERRORS = {
+  bad_name: "กรุณาใส่ชื่อปลา (ไม่เกิน 60 ตัวอักษร)",
+  bad_price: "ราคาต้องเป็นจำนวนเต็มบาท ตั้งแต่ 1 บาท",
+  bad_stock: "จำนวนสต็อกต้องเป็นจำนวนเต็ม 0 ถึง 999",
+  bad_text: "ข้อความยาวเกินไป หรือมีเครื่องหมาย < >",
+  bad_image: "รูปใหญ่เกินไปหรือไม่ใช่ไฟล์รูป",
+  too_large: "รูปใหญ่เกินไป ลองรูปอื่น",
+  rate_limited: "บันทึกถี่เกินไป รอสักครู่แล้วลองใหม่",
+};
+
+$("fish-form").onsubmit = async (e) => {
+  e.preventDefault();
+  const btn = $("f-save");
+  btn.disabled = true;
+  $("f-error").classList.add("hidden");
+  try {
+    const body = {
+      id: editing ? editing.id : undefined,
+      name: $("f-name").value, price: $("f-price").value, stock: $("f-stock").value,
+      size: $("f-size").value, blurb: $("f-blurb").value, color: $("f-color").value, status: $("f-status").value,
+      detail: {
+        number: $("f-number").value, tagline: $("f-tagline").value, smells: $("f-smells").value,
+        feel: $("f-feel").value, suits: $("f-suits").value, when: $("f-when").value,
+      },
+      image: photo || undefined,
+      remove_image: removePhoto,
+    };
+    const res = await fetch("/api/admin/product", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + liff.getIDToken(), "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (res.status === 401) return liff.login({ redirectUri: location.href });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(out.error || "http_" + res.status);
+    products = out.products;
+    renderProducts();
+    $("fish").close();
+  } catch (err) {
+    $("f-error").textContent = FISH_ERRORS[err.message] || "บันทึกไม่สำเร็จ ลองอีกครั้ง";
+    $("f-error").classList.remove("hidden");
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+const NEXT_LABEL = { paid: "ยืนยันชำระแล้ว", shipped: "ส่งแล้ว", cancelled: "ยกเลิก" };
+async function setStatus(ref, to, btn) {
+  if (to === "cancelled" && !confirm("ยกเลิกออเดอร์ " + ref + " ? ปลาจะกลับมาขายได้ และคะแนนที่ใช้จะคืนลูกค้า")) return;
+  btn.disabled = true;
+  const res = await fetch("/api/admin/order", {
+    method: "POST",
+    headers: { Authorization: "Bearer " + liff.getIDToken(), "Content-Type": "application/json" },
+    body: JSON.stringify({ ref, status: to }),
+  });
+  if (res.status === 401) return liff.login({ redirectUri: location.href });
+  if (!res.ok) { btn.disabled = false; return alert("เปลี่ยนสถานะไม่สำเร็จ ลองรีเฟรชแล้วลองใหม่"); }
+  await load();
 }
 
 async function load() {
@@ -326,7 +529,10 @@ async function load() {
     $("state").textContent = "โหลดข้อมูลไม่สำเร็จ ลองกดรีเฟรชอีกครั้ง";
     return;
   }
-  render(await res.json());
+  const data = await res.json();
+  products = data.products || [];
+  renderProducts();
+  render(data);
 }
 
 $("refresh").onclick = () => load().catch(() => ($("state").textContent = "โหลดข้อมูลไม่สำเร็จ"));

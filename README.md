@@ -1,4 +1,10 @@
-# BitterSweet Scent Concierge (Cloudflare Worker)
+# Aquatic Jewel Betta Concierge (Cloudflare Worker)
+
+> **This branch is the betta fish shop "Aquatic Jewel"**, rebuilt from the BitterSweet perfume bot below. Start with
+> [docs/AQUARIUM.md](docs/AQUARIUM.md): what changed and how to deploy it on a new LINE Official Account. The rest of
+> this README and the other docs still describe the original perfume project; the architecture is the same.
+
+## Original project: BitterSweet Scent Concierge
 
 A LINE Official Account chatbot for a one-day university demo. Customers chat in Thai; the AI (Google Gemini by default, a local Qwen model on a Mac mini, or Claude Sonnet 5.5) recommends among BitterSweet's three scents, suggests the discovery set, saves a scent profile only after PDPA consent and adds interested people to the pre-order waitlist. It never takes orders, payments or addresses (Thai FDA notification is still pending). Skin, allergy, ingredients, complaints and requests for a human are handed off to the perfumer.
 

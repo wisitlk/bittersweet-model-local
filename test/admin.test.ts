@@ -13,7 +13,6 @@ function makeEnv(extra: Partial<Env> = {}): Env {
     LINE_CHANNEL_ACCESS_TOKEN: "tok",
     LIFF_ID: "2001234567-AbCd",
     LINE_LOGIN_CHANNEL_ID: "2001234567",
-    FDA_NOTIFICATION_NO: "10-1-0000000000",
     PROMPTPAY_ID: "0812345678",
     ...extra,
   };
@@ -33,7 +32,7 @@ async function call(env: Env, path: string, body?: unknown) {
 
 const member = { first_name: "สมใจ", last_name: "ใจดี", phone: "0812345678", age: 25, consent: true };
 const order = {
-  lines: [{ product: "slow_morning", variant: "bottle", qty: 1 }],
+  lines: [{ product: "red_dragon", variant: "bottle", qty: 1 }],
   shipping: { name: "สมใจ ใจดี", phone: "0812345678", address: "1 ถนนสุขุมวิท กรุงเทพ", postcode: "10110" },
 };
 
@@ -63,7 +62,7 @@ describe("admin dashboard", () => {
   it("answers 404 to everyone else and tells /api/me who is an admin", async () => {
     const env = makeEnv();
     expect((await call(env, "/api/admin")).status).toBe(404);
-    expect((await call(env, "/api/admin/order", { ref: "BS-AAAAAA", status: "paid" })).status).toBe(404);
+    expect((await call(env, "/api/admin/order", { ref: "AJ-AAAAAA", status: "paid" })).status).toBe(404);
     expect((await call(env, "/api/me")).body.admin).toBe(false);
     expect((await call(makeEnv({ ADMIN_LINE_USER_IDS: USER }), "/api/me")).body.admin).toBe(true);
   });
@@ -119,9 +118,9 @@ describe("admin dashboard", () => {
 
   it("rejects unknown orders and statuses", async () => {
     const env = makeEnv({ ADMIN_LINE_USER_IDS: USER });
-    expect((await call(env, "/api/admin/order", { ref: "BS-ZZZZZZ", status: "paid" })).status).toBe(404);
+    expect((await call(env, "/api/admin/order", { ref: "AJ-ZZZZZZ", status: "paid" })).status).toBe(404);
     expect((await call(env, "/api/admin/order", { ref: "x'; DROP", status: "paid" })).status).toBe(404);
-    expect((await call(env, "/api/admin/order", { ref: "BS-ZZZZZZ", status: "refunded" })).body.error).toBe("bad_status");
+    expect((await call(env, "/api/admin/order", { ref: "AJ-ZZZZZZ", status: "refunded" })).body.error).toBe("bad_status");
   });
 
   it("masks phones", () => {
