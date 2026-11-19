@@ -1,4 +1,4 @@
-import { findProduct, KIT_PRICE } from "./catalog";
+import { KIT_PRICE, type Product } from "./catalog";
 import { isRecord } from "./guards";
 import { BALANCE_SQL } from "./loyalty";
 import { cleanPhone } from "./member";
@@ -24,8 +24,8 @@ export const VARIANTS = {
 export type Variant = keyof typeof VARIANTS;
 
 /** Price of one unit of a line: the fish's own price plus the variant's extra. */
-export function unitPrice(productId: string, variant: Variant): number {
-  return (findProduct(productId)?.price ?? 0) + VARIANTS[variant].extra;
+export function unitPrice(product: Pick<Product, "price">, variant: Variant): number {
+  return product.price + VARIANTS[variant].extra;
 }
 
 /** Points redemption: one per order, applied to the products total. The page shows these; the server decides. */
@@ -70,11 +70,13 @@ function text(v: unknown, max: number): string | null {
   return s && s.length <= max && !/[<>\p{Cc}]/u.test(s) ? s : null;
 }
 
-export function parseOrder(body: unknown): Order | OrderError {
+/** Checks a cart against the catalog (the active listings from D1, src/products.ts). Stock is checked when saving. */
+export function parseOrder(body: unknown, catalog: readonly Product[]): Order | OrderError {
+  const find = (id: unknown) => catalog.find((p) => p.id === id);
   if (!isRecord(body) || !Array.isArray(body.lines) || !body.lines.length || body.lines.length > MAX_LINES) return "bad_cart";
   const lines: OrderLine[] = [];
   for (const l of body.lines as unknown[]) {
-    if (!isRecord(l) || !findProduct(l.product) || typeof l.variant !== "string" || !(l.variant in VARIANTS)) return "bad_cart";
+    if (!isRecord(l) || !find(l.product) || typeof l.variant !== "string" || !(l.variant in VARIANTS)) return "bad_cart";
     if (typeof l.qty !== "number" || !Number.isInteger(l.qty) || l.qty < 1 || l.qty > MAX_QTY) return "bad_cart";
     lines.push({ product: l.product as string, variant: l.variant as Variant, qty: l.qty });
   }
@@ -90,7 +92,7 @@ export function parseOrder(body: unknown): Order | OrderError {
     redeem = body.redeem as RedeemOption;
   }
   // The price and the discount always come from the catalog, never from the page.
-  const subtotal = lines.reduce((sum, l) => sum + unitPrice(l.product, l.variant) * l.qty, 0);
+  const subtotal = lines.reduce((sum, l) => sum + unitPrice(find(l.product)!, l.variant) * l.qty, 0);
   const discount = redeem ? Math.round((subtotal * REDEEM_OPTIONS[redeem].percent) / 100) : 0;
   return { lines, shipping: { name, phone, address, postcode }, subtotal, redeem, discount, total: subtotal - discount };
 }
@@ -134,39 +136,85 @@ export function orderRef(): string {
   return "AJ-" + Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
 }
 
+/** Units each product an order takes: both variants of one fish share its stock. */
+export function stockNeeds(lines: readonly OrderLine[]): [string, number][] {
+  const m = new Map<string, number>();
+  for (const l of lines) m.set(l.product, (m.get(l.product) ?? 0) + l.qty);
+  return [...m];
+}
+
+/** SQL condition "every product has enough active stock", with its parameters numbered from `first`. */
+function stockCondition(needs: [string, number][], first: number): { sql: string; params: unknown[] } {
+  const sql = needs
+    .map((_, i) => `COALESCE((SELECT stock FROM products WHERE id = ?${first + 2 * i} AND status = 'active'), 0) >= ?${first + 2 * i + 1}`)
+    .join(" AND ");
+  return { sql: sql || "1", params: needs.flat() };
+}
+
+/** True when every line's fish is listed and has enough stock right now (used for the demo and for error messages). */
+export async function hasStock(db: D1Database, lines: readonly OrderLine[]): Promise<boolean> {
+  const cond = stockCondition(stockNeeds(lines), 1);
+  const row = await db.prepare(`SELECT (${cond.sql}) AS ok`).bind(...cond.params).first<{ ok: number }>();
+  return row?.ok === 1;
+}
+
+export type SaveResult = "ok" | "sold_out" | "not_enough_points";
+
 /**
- * Saves the order. With a redemption, the points are taken and the order is written in one D1 batch (one
- * transaction): the points row is only inserted while the balance covers it, and the order row only when that
- * points row exists, so two orders at once can never spend the same points. Returns false if the points ran out.
+ * Saves the order, all in one D1 batch (one transaction):
+ *  1. with a redemption, the points row is inserted only while the balance covers it;
+ *  2. the order row is inserted only if every fish still has the stock (and the points row exists);
+ *  3. each fish's stock goes down only if that order row exists (the order is marked stock_held = 1);
+ *  4. a points row whose order was refused (sold out) is removed again.
+ * So two customers can never buy the last fish twice, and points are never spent twice or on a refused order.
  */
-export async function saveOrder(db: D1Database, ref: string, userId: string, o: Order, now: number): Promise<boolean> {
+export async function saveOrder(db: D1Database, ref: string, userId: string, o: Order, now: number): Promise<SaveResult> {
   const cols = `(ref, user_id, lines, subtotal, discount, points_used, total, ship_name, ship_phone, ship_address,
-     ship_postcode, status, created_at)`;
+     ship_postcode, status, created_at, stock_held)`;
+  const reason = o.redeem ? redeemReason(ref) : "";
   const values = [ref, userId, JSON.stringify(o.lines), o.subtotal, o.discount, o.redeem ? REDEEM_OPTIONS[o.redeem].points : 0,
-    o.total, o.shipping.name, o.shipping.phone, o.shipping.address, o.shipping.postcode, now];
-  if (!o.redeem) {
-    await db
-      .prepare(`INSERT INTO orders ${cols} VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 'awaiting_payment', ?12)`)
-      .bind(...values)
-      .run();
-    return true;
+    o.total, o.shipping.name, o.shipping.phone, o.shipping.address, o.shipping.postcode, now, reason];
+  const needs = stockNeeds(o.lines);
+  const stock = stockCondition(needs, 14);
+  const pointsCond = o.redeem ? "EXISTS (SELECT 1 FROM points WHERE user_id = ?2 AND reason = ?13)" : "?13 = ''";
+
+  const stmts: D1PreparedStatement[] = [];
+  if (o.redeem) {
+    const cost = REDEEM_OPTIONS[o.redeem].points;
+    stmts.push(
+      db
+        .prepare(`INSERT INTO points (user_id, reason, amount, created_at) SELECT ?1, ?2, ?3, ?4 WHERE ${BALANCE_SQL} >= ?5`)
+        .bind(userId, reason, -cost, now, cost),
+    );
   }
-  const cost = REDEEM_OPTIONS[o.redeem].points;
-  const reason = redeemReason(ref);
-  const [, saved] = await db.batch([
-    db
-      .prepare(
-        `INSERT INTO points (user_id, reason, amount, created_at)
-         SELECT ?1, ?2, ?3, ?4 WHERE ${BALANCE_SQL} >= ?5`,
-      )
-      .bind(userId, reason, -cost, now, cost),
+  const orderIndex = stmts.length;
+  stmts.push(
     db
       .prepare(
         `INSERT INTO orders ${cols}
-         SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 'awaiting_payment', ?12
-         WHERE EXISTS (SELECT 1 FROM points WHERE user_id = ?2 AND reason = ?13)`,
+         SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 'awaiting_payment', ?12, 1
+         WHERE ${pointsCond} AND ${stock.sql}`,
       )
-      .bind(...values, reason),
-  ]);
-  return saved?.meta.changes === 1;
+      .bind(...values, ...stock.params),
+  );
+  for (const [product, qty] of needs) {
+    stmts.push(
+      db
+        .prepare(
+          `UPDATE products SET stock = stock - ?1, updated_at = ?2
+           WHERE id = ?3 AND EXISTS (SELECT 1 FROM orders WHERE ref = ?4)`,
+        )
+        .bind(qty, now, product, ref),
+    );
+  }
+  if (o.redeem) {
+    stmts.push(
+      db
+        .prepare("DELETE FROM points WHERE user_id = ?1 AND reason = ?2 AND NOT EXISTS (SELECT 1 FROM orders WHERE ref = ?3)")
+        .bind(userId, reason, ref),
+    );
+  }
+  const results = await db.batch(stmts);
+  if (results[orderIndex]?.meta.changes === 1) return "ok";
+  return (await hasStock(db, o.lines)) ? "not_enough_points" : "sold_out";
 }

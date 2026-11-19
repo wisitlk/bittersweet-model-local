@@ -24,7 +24,7 @@ import {
 } from "./store";
 import { findProduct } from "./catalog";
 import { errName } from "./guards";
-import { loadConsentAndSurvey, PERSONALITY, surveyNote } from "./survey";
+import { listingNote, loadConsentAndSurvey, PERSONALITY, surveyNote } from "./survey";
 import { truncate } from "./text";
 import type { Env } from "./types";
 import type { LineEvent } from "./webhook";
@@ -41,7 +41,7 @@ export const MAX_USER_TEXT_CHARS = 1000;
  * fetch() calls count (each redirect hop too) and so do D1 queries.
  *
  * Worst case for one text message on the full path:
- *   D1: claim 1 + per-user window 1 + per-user day 1 + global day 1 + history 1 + consent and survey read 1
+ *   D1: claim 1 + per-user window 1 + per-user day 1 + global day 1 + history 1 + consent, survey and fish list read 1
  *       + save turn 1 (one two-row INSERT) + consent upsert 1 = 8
  *       (a delete request replaces the save and upsert with 3 deletes: history, consent, and points + waitlist in one batch: 9)
  *   fetch: loading 1 + AI model at most MAX_MODEL_CALLS = 3 + LINE reply 1 + Apps Script 2 (one redirect hop) = 7
@@ -269,7 +269,7 @@ export async function handleEvent(
 
     // The typing animation is cosmetic: start it, but do not make the Claude call wait for it.
     const loading = startLoading(token, ev.userId);
-    const [history, { consent: consentStored, survey }] = await Promise.all([
+    const [history, { consent: consentStored, survey, listing }] = await Promise.all([
       loadHistory(env.DB, ev.userId),
       loadConsentAndSurvey(env.DB, ev.userId),
     ]);
@@ -277,7 +277,10 @@ export async function handleEvent(
     // (see withNote) and is never stored as the customer's words.
     const fish = survey ? (findProduct(PERSONALITY[survey.personality].fish)?.name ?? "") : "";
     const note = survey ? surveyNote(survey, fish) : "";
-    const resp = await askModel(env, content.systemPrompt, history, userText, note, consentStored, started + MODEL_BUDGET_MS);
+    // The live fish list goes at the end of the system prompt: it changes only when staff edit a listing, so the
+    // prompt prefix (and its cache) stays the same from one message to the next.
+    const system = listing ? `${content.systemPrompt}\n\n${listingNote(listing)}` : content.systemPrompt;
+    const resp = await askModel(env, system, history, userText, note, consentStored, started + MODEL_BUDGET_MS);
     await loading; // never rejects
     if (!resp) return await say(APOLOGY_REPLY);
 

@@ -1,6 +1,6 @@
-import { findProduct } from "./catalog";
-import { VARIANTS } from "./checkout";
+import { stockNeeds, VARIANTS, type OrderLine } from "./checkout";
 import { PERSONALITY } from "./survey";
+import { loadProducts } from "./products";
 import type { Env } from "./types";
 
 /*
@@ -13,7 +13,9 @@ import type { Env } from "./types";
  * paid/shipped orders and a cancelled order's redemption stops counting (BALANCE_SQL in src/loyalty.ts).
  * Customer details are shown to staff only, never logged.
  *
- * Subrequests: verify 1 + rate limit 1 + at most 15 D1 queries (summary 10, daily series 4, order list 1).
+ * Subrequests: verify 1 + rate limit 1 + at most 17 D1 queries (summary 10, daily series 4, order list 2, products 1).
+ *
+ * Staff also add and edit the fish for sale here (POST /api/admin/product, src/products.ts).
  *
  * The same API feeds the full-screen dashboard at /app/admin (web/admin.html), which adds charts by day.
  */
@@ -67,7 +69,12 @@ export async function adminSummary(db: D1Database, now: number) {
       one(db, "SELECT COUNT(*) AS n FROM surveys"),
       counts(db, "SELECT personality AS key, COUNT(*) AS n FROM surveys GROUP BY personality"),
       counts(db, "SELECT age_group AS key, COUNT(*) AS n FROM surveys GROUP BY age_group"),
-      counts(db, "SELECT product AS key, COUNT(*) AS n FROM waitlist GROUP BY product"),
+      db
+        .prepare(
+          `SELECT w.product AS id, COALESCE(p.name, w.product) AS name, COUNT(*) AS count
+           FROM waitlist w LEFT JOIN products p ON p.id = w.product GROUP BY w.product`,
+        )
+        .all<{ id: string; name: string; count: number }>(),
       counts(db, "SELECT status AS key, COUNT(*) AS n FROM orders GROUP BY status"),
       db
         .prepare(
@@ -81,7 +88,7 @@ export async function adminSummary(db: D1Database, now: number) {
     funnel: { chatters7d, messages7d, consents, members, surveys, orders: Object.values(orders).reduce((a, b) => a + b, 0) },
     personality: Object.entries(PERSONALITY).map(([key, p]) => ({ key, label: p.label, count: personality[key] ?? 0 })),
     ageGroups,
-    waitlist: Object.entries(waitlist).map(([id, n]) => ({ id, name: findProduct(id)?.name ?? id, count: n })),
+    waitlist: waitlist.results,
     orders,
     sales: { revenue: sales?.revenue ?? 0, discount: sales?.discount ?? 0, points_used: sales?.points_used ?? 0 },
   };
@@ -152,11 +159,11 @@ export function maskPhone(phone: string): string {
   return d.length >= 7 ? `${d.slice(0, 3)}-xxx-${d.slice(-4)}` : "xxx";
 }
 
-function describeLines(raw: string): string {
+function describeLines(raw: string, names: ReadonlyMap<string, string>): string {
   try {
     const lines = JSON.parse(raw) as { product?: string; variant?: string; qty?: number }[];
     return lines
-      .map((l) => `${findProduct(l.product)?.name ?? l.product} ${(l.variant && l.variant in VARIANTS ? VARIANTS[l.variant as keyof typeof VARIANTS].label : l.variant) ?? ""} x${l.qty}`)
+      .map((l) => `${names.get(l.product ?? "") ?? l.product} ${(l.variant && l.variant in VARIANTS ? VARIANTS[l.variant as keyof typeof VARIANTS].label : l.variant) ?? ""} x${l.qty}`)
       .join(", ");
   } catch {
     return "";
@@ -168,6 +175,7 @@ function describeLines(raw: string): string {
  * phone and the postcode are enough to match a payment slip.
  */
 export async function adminOrders(db: D1Database) {
+  const names = new Map((await loadProducts(db, true)).map((p) => [p.id, p.name]));
   const { results } = await db
     .prepare(
       `SELECT ref, lines, subtotal, discount, total, points_used, ship_name, ship_phone, ship_address, ship_postcode,
@@ -180,7 +188,7 @@ export async function adminOrders(db: D1Database) {
     const ship = o.status === "paid";
     return {
       ref: o.ref,
-      items: describeLines(o.lines),
+      items: describeLines(o.lines, names),
       subtotal: o.subtotal,
       discount: o.discount,
       total: o.total,
@@ -202,12 +210,37 @@ export type StatusChange = "ok" | "bad_status" | "not_found" | "not_allowed";
  * double tap or two staff at once change it only once.
  */
 export async function setOrderStatus(db: D1Database, ref: unknown, to: unknown): Promise<StatusChange> {
-  if (typeof ref !== "string" || !/^AJ-[A-Z0-9]{4,12}$/.test(ref)) return "not_found";
+  if (typeof ref !== "string" || !/^(AJ|BS)-[A-Z0-9]{4,12}$/.test(ref)) return "not_found";
   if (typeof to !== "string" || !(ORDER_STATUSES as readonly string[]).includes(to)) return "bad_status";
   const row = await db.prepare("SELECT status FROM orders WHERE ref = ?1").bind(ref).first<{ status: string }>();
   if (!row) return "not_found";
   const allowed = NEXT_STATUS[row.status as OrderStatus] ?? [];
   if (!(allowed as readonly string[]).includes(to)) return row.status === to ? "ok" : "not_allowed";
-  await db.prepare("UPDATE orders SET status = ?1 WHERE ref = ?2 AND status = ?3").bind(to, ref, row.status).run();
+  const update = db.prepare("UPDATE orders SET status = ?1 WHERE ref = ?2 AND status = ?3").bind(to, ref, row.status);
+  if (to !== "cancelled") {
+    await update.run();
+    return "ok";
+  }
+  // A cancel gives the fish back for sale, once: every stock update needs the order cancelled and still holding stock,
+  // and the last statement clears stock_held, all in one batch (a double tap finds stock_held = 0 and returns nothing).
+  const lines = await db.prepare("SELECT lines FROM orders WHERE ref = ?1").bind(ref).first<{ lines: string }>();
+  let needs: [string, number][];
+  try {
+    needs = stockNeeds(JSON.parse(lines?.lines ?? "[]") as OrderLine[]);
+  } catch {
+    needs = [];
+  }
+  await db.batch([
+    update,
+    ...needs.map(([product, qty]) =>
+      db
+        .prepare(
+          `UPDATE products SET stock = stock + ?1
+           WHERE id = ?2 AND EXISTS (SELECT 1 FROM orders WHERE ref = ?3 AND status = 'cancelled' AND stock_held = 1)`,
+        )
+        .bind(qty, product, ref),
+    ),
+    db.prepare("UPDATE orders SET stock_held = 0 WHERE ref = ?1 AND status = 'cancelled'").bind(ref),
+  ]);
   return "ok";
 }

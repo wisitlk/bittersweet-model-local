@@ -1,15 +1,23 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import worker from "../src/index";
-import { crc16, parseOrder, promptPayPayload } from "../src/checkout";
+import { PRODUCTS } from "../src/catalog";
+import { crc16, parseOrder as parseWith, promptPayPayload } from "../src/checkout";
 import { pointBalance } from "../src/loyalty";
 import { renderApp } from "../src/liff";
 import { createFakeD1, rows } from "./fakeD1";
 import type { Env } from "../src/types";
 
 const USER = "U" + "c".repeat(32);
+const parseOrder = (body: unknown) => parseWith(body, PRODUCTS);
+/** A shop with 10 of each fish, so one customer can place several orders. */
+function stocked(n = 10): D1Database {
+  const db = createFakeD1();
+  rows(db, `UPDATE products SET stock = ${n} RETURNING id`);
+  return db;
+}
 function makeEnv(extra: Partial<Env> = {}): Env {
   return {
-    DB: createFakeD1(),
+    DB: stocked(),
     LINE_CHANNEL_SECRET: "s",
     LINE_CHANNEL_ACCESS_TOKEN: "tok",
     LIFF_ID: "2001234567-AbCd",

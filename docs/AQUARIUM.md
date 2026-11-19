@@ -29,6 +29,18 @@ for the fish shop they mean "fish looked at" and "wants the starter kit".
 **Placeholders to confirm:** the THB prices of the five fish and the starter kit (390 THB) are examples. Change them
 in `content/knowledge.md`, `src/catalog.ts` (and the test `catalog prices match the knowledge base`) together.
 
+## Buying and selling
+
+- **Staff add and edit fish** on the dashboard (`/app/admin`, section "ปลาที่ลงขาย"): name, price, stock, photo
+  (resized in the browser and stored in D1, served at `/pimg/<id>`), descriptions, show/hide. Listings live in the
+  D1 table `products` (`src/products.ts`); `src/catalog.ts` only seeds the first five.
+- **Stock:** each fish usually has stock 1. An order takes stock in the same D1 batch that saves it, so the last fish
+  can be sold only once; a sold-out fish shows "ขายแล้ว". A cancelled order gives the stock back once.
+- **Customers pay** by PromptPay QR once the secret `PROMPTPAY_ID` is set; staff confirm the slip on the dashboard
+  (ยืนยันชำระแล้ว → ส่งแล้ว, or ยกเลิก).
+- **The chat bot** gets the live list of active fish with prices (and which are sold out) at the end of its system
+  prompt, read in the same D1 query as consent and survey.
+
 ## Deploy (owner, on the Mac mini)
 
 Same OA, Worker, database and secrets as before, so no LINE or database setup is needed:
@@ -36,6 +48,8 @@ Same OA, Worker, database and secrets as before, so no LINE or database setup is
 1. In the repo folder: `git fetch origin claude/project-thread-rx82e5 && git checkout claude/project-thread-rx82e5`
    (or merge PR #4 first and use that branch).
 2. `npm ci && npm run typecheck && npm test && npm run lint`.
+   Once, before the first deploy of the shop: `npx wrangler d1 execute bitter_sweet --remote --file=migrations/0004_products.sql`
+   (adds the products tables, the five starter fish and `orders.stock_held`).
 3. `npx wrangler deploy` (add the usual `--var LLM_PROVIDER:hybrid --var LLM_BASE_URL:<tunnel>` only if Gemma on the
    Mac mini is running; otherwise the bot uses Gemini).
 4. In LINE Official Account Manager, rename the account and change its profile picture and greeting when ready;

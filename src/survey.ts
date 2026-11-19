@@ -1,5 +1,6 @@
 import { isRecord } from "./guards";
 import { ageGroupOf, isMinor, type Member } from "./member";
+import { LISTING_SQL } from "./products";
 
 /*
  * The fish-keeper survey in the LINE web app (PDPA consent -> survey -> age range + keeper type -> segments for
@@ -165,21 +166,35 @@ export async function loadSurvey(db: D1Database, userId: string): Promise<Survey
 }
 
 /**
- * Consent and survey in one D1 query (the chat path counts every subrequest, see handler.ts).
- * The survey is only returned while consent is stored.
+ * Consent, survey and the live fish list in one D1 query (the chat path counts every subrequest, see handler.ts).
+ * The survey is only returned while consent is stored; the fish list is public shop data.
  */
-export async function loadConsentAndSurvey(db: D1Database, userId: string): Promise<{ consent: boolean; survey: Survey | null }> {
+export async function loadConsentAndSurvey(
+  db: D1Database,
+  userId: string,
+): Promise<{ consent: boolean; survey: Survey | null; listing: string }> {
   const row = await db
     .prepare(
-      `SELECT c.given, s.age_group, s.under_20, s.guardian_consent, s.answers, s.personality
+      `SELECT c.given, s.age_group, s.under_20, s.guardian_consent, s.answers, s.personality, ${LISTING_SQL} AS listing
        FROM (SELECT ?1 AS uid) u
        LEFT JOIN consents c ON c.user_id = u.uid
        LEFT JOIN surveys s ON s.user_id = u.uid`,
     )
     .bind(userId)
-    .first<{ given: number | null } & Partial<SurveyRow>>();
+    .first<{ given: number | null; listing: string | null } & Partial<SurveyRow>>();
   const consent = row?.given === 1;
-  return { consent, survey: consent && row?.personality ? rowToSurvey(row as SurveyRow) : null };
+  return {
+    consent,
+    survey: consent && row?.personality ? rowToSurvey(row as SurveyRow) : null,
+    listing: row?.listing ?? "",
+  };
+}
+
+/** Note for the chat model: the fish listed in the shop right now (staff edit them in the dashboard). */
+export function listingNote(listing: string): string {
+  return listing
+    ? `[ปลาที่ลงขายในหน้าร้านตอนนี้ ระบบใส่ให้ ใช้ราคานี้แทนตารางใน KNOWLEDGE ถ้าต่างกัน: ${listing}]`
+    : "";
 }
 
 const label = (qid: QuestionId, code: string) =>

@@ -34,6 +34,8 @@
   .body { padding: 12px 14px 14px; }
   .row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
   .price { font-weight: 600; }
+  .product.sold .photo { filter: grayscale(1) opacity(.6); }
+  .product.sold .price::after { content: " · ขายแล้ว"; color: var(--muted); font-weight: 400; }
   .muted { color: var(--muted); font-size: 14px; }
   .btn { display: block; width: 100%; margin-top: 12px; padding: 12px; border: 0; border-radius: 12px;
     background: var(--accent); color: var(--accent-ink); font: inherit; font-weight: 600; }
@@ -368,9 +370,12 @@ function renderProducts() {
     card.querySelector(".blurb").textContent = p.blurb;
     card.querySelector(".more").onclick = () => openScent(p);
     const btn = card.querySelector(".buy");
-    btn.textContent = CONFIG.sales ? "ซื้อ" : "ซื้อ (เดโม)";
+    btn.textContent = p.stock <= 0 ? "ขายแล้ว" : CONFIG.sales ? "ซื้อ" : "ซื้อ (เดโม)";
+    btn.disabled = p.stock <= 0;
     btn.onclick = () => openBuy(p);
-    if (!CONFIG.sales) {
+    if (p.stock <= 0) card.classList.add("sold");
+    else if (p.stock > 1) card.querySelector(".size").textContent = p.size + " · เหลือ " + p.stock + " ตัว";
+    if (!CONFIG.sales && p.stock > 0) {
       const pre = document.createElement("button");
       pre.className = "btn ghost";
       pre.textContent = joined ? "ลงชื่อ pre-order แล้ว ✓" : "ลงชื่อ pre-order";
@@ -555,10 +560,15 @@ $("confirm-ok").onclick = async () => {
 
 // Buy flow. Prices on the page are a preview; the server computes the total from the catalog.
 let buying = null;
+// At most 5 per line and never more than the fish in stock.
+function buyQty() {
+  const max = Math.max(1, Math.min(5, buying ? buying.stock : 1));
+  return Math.max(1, Math.min(max, Math.floor(Number($("buy-qty").value) || 1)));
+}
 // Mirrors parseOrder in src/checkout.ts; the server's numbers are the ones that count.
 function buyPrice() {
   const v = picked("variant");
-  const qty = Math.max(1, Math.min(5, Math.floor(Number($("buy-qty").value) || 1)));
+  const qty = buyQty();
   const subtotal = v && buying ? (buying.price + CONFIG.variants[v].extra) * qty : 0;
   const r = CONFIG.redeem[picked("redeem")];
   const discount = r ? Math.round((subtotal * r.percent) / 100) : 0;
@@ -589,6 +599,8 @@ function openBuy(p) {
   redeem.querySelector("input").checked = true;
   $("buy-points").textContent = state.points;
   $("buy-qty").value = 1;
+  $("buy-qty").max = String(Math.max(1, Math.min(5, p.stock)));
+  $("buy-qty").closest("label").classList.toggle("hidden", p.stock <= 1); // a single fish: nothing to choose
   showBuyPrice();
   if (state.member) {
     $("s-name").value = state.member.first_name + " " + state.member.last_name;
@@ -607,7 +619,7 @@ $("buy-form").onsubmit = async (e) => {
   btn.disabled = true;
   $("buy-error").classList.add("hidden");
   try {
-    const qty = Math.max(1, Math.min(5, Math.floor(Number($("buy-qty").value) || 1)));
+    const qty = buyQty();
     const res = await api("/api/checkout", {
       method: "POST",
       body: JSON.stringify({
@@ -638,6 +650,7 @@ $("buy-form").onsubmit = async (e) => {
     $("buy-error").textContent = err.message === "bad_shipping"
       ? "กรุณากรอกชื่อ เบอร์โทร 10 หลัก ที่อยู่ และรหัสไปรษณีย์ 5 หลัก"
       : err.message === "not_enough_points" ? "คะแนนไม่พอสำหรับส่วนลดนี้ กลับไปเลือกใหม่ได้"
+      : err.message === "sold_out" ? "ขออภัย ปลาตัวนี้เพิ่งขายไปแล้ว ลองดูตัวอื่นในหน้าร้านนะครับ"
       : err.message === "register_required" ? "กรุณาสมัครสมาชิกก่อนสั่งซื้อ" : "ทำรายการไม่สำเร็จ ลองอีกครั้งนะครับ";
     $("buy-error").classList.remove("hidden");
   } finally {
@@ -691,7 +704,8 @@ function openScent(p) {
   const ul = $("scent-suits");
   ul.textContent = "";
   for (const s of d.suits) { const li = document.createElement("li"); li.textContent = s; ul.appendChild(li); }
-  $("scent-buy").textContent = CONFIG.sales ? "ซื้อ " + p.name : "ซื้อ " + p.name + " (เดโม)";
+  $("scent-buy").textContent = p.stock <= 0 ? "ขายแล้ว" : CONFIG.sales ? "ซื้อ " + p.name : "ซื้อ " + p.name + " (เดโม)";
+  $("scent-buy").disabled = p.stock <= 0;
   $("scent-buy").onclick = () => {
     if (!loggedIn) return liff.login({ redirectUri: location.href });
     if (!loaded) return; // still loading the member's points
